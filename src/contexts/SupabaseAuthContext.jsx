@@ -70,19 +70,10 @@ export const AuthProvider = ({ children }) => {
   }, [toast]);
 
   const signInWithGoogle = useCallback(async () => {
-    // Determine the correct redirect URL based on environment
-    const getRedirectUrl = () => {
-      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-        return 'http://localhost:3000';
-      }
-      // For production, use your actual domain
-      return 'https://autocryptotax.vercel.app'; // Replace with your actual domain
-    };
-
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: getRedirectUrl(),
+        redirectTo: window.location.origin,
         queryParams: {
           access_type: 'offline',
           prompt: 'consent',

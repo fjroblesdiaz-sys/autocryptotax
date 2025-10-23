@@ -32,10 +32,33 @@ const App = () => {
     return () => clearTimeout(timer);
   }, []);
 
+  // Handle OAuth callback - process hash fragment tokens
+  useEffect(() => {
+    const handleOAuthCallback = async () => {
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const accessToken = hashParams.get('access_token');
+      
+      if (accessToken) {
+        // Supabase client should automatically handle this via onAuthStateChange
+        // But we can help by cleaning up the URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    };
+
+    handleOAuthCallback();
+  }, [location]);
+
   const isAuthenticated = !!session;
 
   const handleLogin = () => setIsAuthModalOpen(true);
   const handleLogout = () => signOut();
+
+  // Close auth modal when user is authenticated
+  useEffect(() => {
+    if (isAuthenticated && isAuthModalOpen) {
+      setIsAuthModalOpen(false);
+    }
+  }, [isAuthenticated, isAuthModalOpen]);
 
   if (isLoading) {
     return <Loader />;

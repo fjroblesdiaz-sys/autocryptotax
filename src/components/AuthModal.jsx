@@ -17,7 +17,11 @@ const AuthModal = ({ isOpen, onClose }) => {
 
   const handleGoogleSignIn = async () => {
     setLoading(true);
-    await signInWithGoogle();
+    const { data, error } = await signInWithGoogle();
+    if (!error) {
+      toast({ title: "¡Bienvenido de nuevo!", description: "Has iniciado sesión correctamente." });
+      onClose();
+    }
     // Note: The modal will close automatically when auth state changes
     setLoading(false);
   };
