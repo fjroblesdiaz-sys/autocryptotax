@@ -1,0 +1,1 @@
+/* Este archivo ha sido eliminado ya que el usuario desea acceder a las analíticas directamente desde el panel de control de Hostinger. */
