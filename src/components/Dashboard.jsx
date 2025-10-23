@@ -72,7 +72,7 @@ const Dashboard = ({ user, isDemo = false, onLogin, isSyncing = false, data: rea
   ];
 
   return (
-    <div className="py-12 px-6">
+    <div className="py-12 mt-12 px-6">
       <div className="container mx-auto max-w-7xl">
         <motion.div
           initial={{ opacity: 0, y: 30 }}

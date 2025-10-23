@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { useToast } from '@/components/ui/use-toast';
-import { X } from 'lucide-react';
 
 const AuthModal = ({ isOpen, onClose }) => {
   const { signIn, signUp } = useAuth();
@@ -40,7 +39,7 @@ const AuthModal = ({ isOpen, onClose }) => {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="crypto-card sm:max-w-[425px] border-slate-700">
+      <DialogContent className="bg-slate-800/60 backdrop-blur-sm border border-slate-700 sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold text-center">Accede a tu cuenta</DialogTitle>
           <DialogDescription className="text-center text-gray-400">
@@ -87,9 +86,6 @@ const AuthModal = ({ isOpen, onClose }) => {
             </form>
           </TabsContent>
         </Tabs>
-        <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-white">
-          <X className="h-4 w-4" />
-        </button>
       </DialogContent>
     </Dialog>
   );

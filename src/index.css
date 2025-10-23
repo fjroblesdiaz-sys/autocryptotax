@@ -31,6 +31,12 @@ body {
   border-color: rgba(37, 99, 235, 0.5); /* fintech-blue with opacity */
 }
 
+.crypto-card.no-hover:hover {
+  transform: none;
+  box-shadow: none;
+  border-color: rgba(51, 65, 85, 0.5);
+}
+
 .glass-effect {
   background: rgba(255, 255, 255, 0.05);
   backdrop-filter: blur(12px);

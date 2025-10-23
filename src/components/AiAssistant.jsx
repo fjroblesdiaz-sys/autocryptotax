@@ -13,10 +13,12 @@ const AiAssistant = ({ knowledgeBase }) => {
   ]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const messagesEndRef = useRef(null);
+  const messagesContainerRef = useRef(null);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
   };
 
   useEffect(scrollToBottom, [messages]);
@@ -68,7 +70,7 @@ const AiAssistant = ({ knowledgeBase }) => {
         <Sparkles className="w-7 h-7 mr-3 text-fintech-blue-light" />
         Asistente IA
       </h2>
-      <div className="flex-grow bg-slate-900/50 rounded-2xl p-4 overflow-y-auto h-96 mb-4">
+      <div ref={messagesContainerRef} className="flex-grow bg-slate-900/50 rounded-2xl p-4 overflow-y-auto h-96 mb-4">
         {messages.map((msg, index) => (
           <motion.div
             key={index}
@@ -109,7 +111,7 @@ const AiAssistant = ({ knowledgeBase }) => {
             </div>
           </motion.div>
         )}
-        <div ref={messagesEndRef} />
+        
       </div>
       <div className="flex items-center gap-2">
         <Input
