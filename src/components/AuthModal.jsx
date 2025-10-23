@@ -83,7 +83,7 @@ const AuthModal = ({ isOpen, onClose }) => {
             <Button 
               type="button" 
               variant="outline" 
-              className="w-full bg-white text-gray-900 hover:bg-gray-100 border-gray-300 flex items-center justify-center gap-3"
+              className="w-full bg-slate-800 hover:bg-slate-700 border-slate-700 text-white flex items-center justify-center gap-3"
               onClick={handleGoogleSignIn}
               disabled={loading}
             >
