@@ -69,6 +69,29 @@ export const AuthProvider = ({ children }) => {
     return { error };
   }, [toast]);
 
+  const signInWithGoogle = useCallback(async () => {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}`,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent',
+        },
+      },
+    });
+
+    if (error) {
+      toast({
+        variant: "destructive",
+        title: "Fallo al iniciar sesión con Google",
+        description: error.message || "Algo salió mal",
+      });
+    }
+
+    return { data, error };
+  }, [toast]);
+
   const signOut = useCallback(async () => {
     const { error } = await supabase.auth.signOut();
 
@@ -94,8 +117,9 @@ export const AuthProvider = ({ children }) => {
     loading,
     signUp,
     signIn,
+    signInWithGoogle,
     signOut,
-  }), [user, session, loading, signUp, signIn, signOut]);
+  }), [user, session, loading, signUp, signIn, signInWithGoogle, signOut]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
