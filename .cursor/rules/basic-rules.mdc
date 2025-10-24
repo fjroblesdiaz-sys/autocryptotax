@@ -1,0 +1,369 @@
+# Project - Cursor Rules
+
+## Project Overview
+This is a Next.js 15 + Prisma TypeScript application using:
+- React 19 with JSX runtime
+- Prisma for database management
+- Tailwind CSS for styling
+- shadcn/ui for component library
+- pnpm as package manager
+- Vitest for unit tests, Playwright for e2e tests
+
+## Code Quality Standards
+
+### Core Principles
+- **Simplicity First**: Write simple, readable code that any senior React developer can understand immediately
+- **Self-Documenting**: Code should be so clear that comments are rarely needed
+- **Predictable Patterns**: Follow consistent patterns throughout the codebase
+- **Senior-Level Standards**: Code should demonstrate advanced React/TypeScript patterns and best practices
+- **Performance Aware**: Consider performance implications in every implementation decision
+- **Type Safety**: Leverage TypeScript's full potential for compile-time safety
+
+### Writing Standards
+- Prefer explicit over implicit
+- Favor composition over inheritance
+- Use descriptive variable and function names
+- Keep functions small and focused on single responsibilities
+- Implement proper error boundaries and error handling
+- Write code that scales with team growth
+- **Always reference latest documentation**: Before implementing any feature, check the latest API documentation and examples
+- **Stay current with best practices**: Use the most recent patterns from official documentation sources
+
+## File Structure & Organization
+
+### Folder Structure
+```
+src/
+├── components/     # Reusable UI components
+├── features/       # Feature-specific modules
+│   ├── utils/      # Feature-specific utility functions & Zod validations
+│   ├── hooks/      # Feature-specific custom hooks
+│   ├── containers/ # Business logic containers
+│   ├── components/ # Feature-specific UI components
+│   └── types/      # Feature-specific TypeScript types
+├── lib/           # Utility libraries and configurations
+├── pages/         # Next.js pages (API routes in pages/api/)
+├── styles/        # Global styles
+└── utils/         # Utility functions
+```
+
+### Page-Container Architecture
+- **Pages** (`src/pages/`): Handle routing, parameter extraction, and pass data to containers
+- **Containers** (`src/features/containers/`): Handle business logic, state management, and data fetching
+- **Components** (`src/features/components/`): Handle UI presentation and user interactions
+
+#### Page-Container Pattern
+```typescript
+// Example: src/pages/item/[id].tsx
+const ItemPage: NextPageWithLayout = () => {
+  const router = useRouter();
+  const { id } = router.query;
+  
+  return <ItemContainer itemId={id as string} />;
+};
+
+// Example: src/features/containers/item-details.container.tsx
+interface ItemContainerProps {
+  itemId: string;
+}
+
+const ItemContainer = ({ itemId }: ItemContainerProps) => {
+  const { data, isLoading } = trpc.item.byId.useQuery({ id: itemId });
+  
+  if (isLoading) return <ItemSkeleton />;
+  if (!data) return <ItemNotFound />;
+  
+  return <ItemDetails item={data} />;
+};
+```
+
+### File Naming Conventions
+**All files must use kebab-case with utility reference suffixes:**
+
+- **Components**: `kebab-case.component.tsx` (e.g., `user-form.component.tsx`, `button.component.tsx`)
+- **Pages**: `kebab-case.tsx` or `[id].tsx` for dynamic routes (e.g., `item-details.tsx`)
+- **Containers**: `kebab-case.container.tsx` (e.g., `item-list.container.tsx`)
+- **Utilities/helpers**: `kebab-case.util.ts` (e.g., `is-valid.util.ts`, `format-date.util.ts`)
+- **Custom hooks**: `kebab-case.hook.ts` (e.g., `use-data-filters.hook.ts`)
+- **Types**: `kebab-case.type.ts` (e.g., `user-profile.type.ts`, `api-response.type.ts`)
+- **Constants**: `kebab-case.constant.ts` (e.g., `api-endpoints.constant.ts`)
+- **Validations**: `kebab-case.validation.ts` (e.g., `user-schema.validation.ts`)
+- **Database files**: `snake_case` following Prisma conventions
+- **Services**: `kebab-case.service.ts` (e.g., `data-service.service.ts`)
+- **API routes**: `kebab-case.ts` (e.g., `user-profile.ts`)
+
+### Features Organization
+Each feature should follow this structure:
+
+```
+src/features/user/
+├── containers/
+│   ├── user-list.container.tsx
+│   ├── user-details.container.tsx
+│   └── user-edit.container.tsx
+├── components/
+│   ├── user-card.component.tsx
+│   ├── user-form.component.tsx
+│   └── avatar-display.component.tsx
+├── hooks/
+│   ├── use-user-filters.hook.ts
+│   └── use-user-validation.hook.ts
+├── types/
+│   └── user-data.type.ts
+└── utils/
+    ├── format-name.util.ts
+    ├── validate-email.util.ts
+    └── user-schema.validation.ts  # Zod validations here
+```
+
+**Zod Validation Rules:**
+- All Zod validation schemas must be placed in the `utils/` folder of each feature
+- Use `.validation.ts` suffix for validation files
+- Import and use these schemas in tRPC procedures and forms
+- Keep validation logic close to the feature it validates
+
+## Code Conventions
+
+### TypeScript
+- Use strict TypeScript settings (already configured)
+- Prefer `interface` over `type` for object definitions unless union types are needed
+- Use path aliases: `@/` for `./src/`
+- Always type function parameters and return types explicitly for public APIs
+- Use Zod for runtime validation schemas (place in feature `utils/` folders)
+- Leverage TypeScript's advanced features (conditional types, mapped types, etc.)
+- Never use `any` type - prefer `unknown` or proper typing
+
+### React/Next.js
+- **Reference Latest React/Next.js Documentation**: Always check [React docs](https://react.dev) and [Next.js docs](https://nextjs.org) for current best practices
+- Use functional components with hooks
+- Prefer React 19 JSX runtime (no need to import React)
+- Use `const` for component declarations
+- Props interfaces should be named `{ComponentName}Props` (e.g., `UserFormProps`, `ButtonProps`)
+- Use Next.js App Router patterns when possible
+- Component files use kebab-case with `.component.tsx` suffix
+- Implement proper React patterns (memoization, error boundaries, suspense)
+- Follow React 19 patterns and leverage new features when appropriate
+
+### Containers & Features Architecture
+- **Separation of Concerns**: Pages handle routing, containers handle logic, components handle UI
+- **Container Responsibilities**: Data fetching, state management, business logic, error handling, layout orchestration
+- **Page Responsibilities**: Parameter extraction, route protection, SEO metadata
+- **One Container Per Page**: Each page should have its dedicated container
+- **Container Props**: Always type container props with `{ContainerName}Props` interface (e.g., `ItemContainerProps`, `UserListContainerProps`)
+- **Feature Organization**: Group related containers, components, hooks, and types within feature directories
+- **Reusability**: Keep containers focused on specific features, extract common logic to custom hooks
+
+### Component Composition & Single Responsibility
+- **Single Responsibility Principle**: Each component should have ONE clear, focused responsibility
+- **Component Breakdown**: Large components must be broken into smaller, focused components with dedicated files
+- **Block-Level Components**: Every distinct UI block or section should be its own component (e.g., `ProductImageSection`, `ProductInfoSection`)
+- **Container Layout**: Containers should handle layout structure (grids, spacing) and component orchestration
+- **Component Focus**: Components should focus on their specific UI concern, not layout or business logic
+- **Reusable Composition**: Build larger features by composing smaller, focused components
+- **File Organization**: Each component gets its own file following the naming convention `{component-name}.component.tsx`
+
+#### Component Composition Example:
+```typescript
+// ❌ BAD: Monolithic component with multiple responsibilities
+export const ProductDetails = ({ product }) => {
+  return (
+    <div>
+      {/* 200+ lines of mixed image, info, actions, description, reviews */}
+    </div>
+  );
+};
+
+// ✅ GOOD: Composed from focused components
+export const ProductDetails = ({ product, onAddToCart, ... }) => {
+  return (
+    <div className="space-y-8">
+      <ProductImageSection product={product} />
+      <ProductInfoSection product={product} />
+      <ProductActionsSection onAddToCart={onAddToCart} ... />
+      <ProductDescriptionCard product={product} />
+      <ProductReviewsCard reviews={reviews} />
+    </div>
+  );
+};
+
+// Container handles layout and orchestration
+export const ProductDetailsContainer = ({ productId }) => {
+  // ... business logic, data fetching, state management
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <div className="max-w-6xl mx-auto">
+        <ProductDetails ... />
+      </div>
+    </div>
+  );
+};
+```
+
+### Custom Hooks Pattern
+- **Business Logic in Hooks**: All container business logic must be extracted into custom hooks
+- **Hook Naming**: Use descriptive names following pattern `use-{feature-action}.hook.ts` (e.g., `use-login.hook.ts`, `use-user-profile.hook.ts`)
+- **Container Simplification**: Containers should only handle UI orchestration and hook consumption
+- **Hook Responsibilities**: API calls, state management, form handling, validation, error handling
+- **Hook Location**: Place hooks in `src/features/{feature}/hooks/` directory
+- **Hook Reusability**: Design hooks to be reusable across multiple containers when possible
+
+Example pattern:
+```typescript
+// src/features/auth/hooks/use-login.hook.ts
+export const useLogin = () => {
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  const handleLogin = async (email: string, password: string) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      // API call logic here
+      const result = await trpc.auth.login.mutate({ email, password });
+      // Handle success
+      return result;
+    } catch (err) {
+      setError('Login failed');
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  return { handleLogin, isLoading, error };
+};
+
+// src/features/auth/containers/login.container.tsx
+export const LoginContainer = () => {
+  const { handleLogin, isLoading, error } = useLogin();
+  
+  return (
+    <div>
+      <LoginForm onSubmit={handleLogin} isLoading={isLoading} error={error} />
+    </div>
+  );
+};
+```
+
+### Styling
+- Use Tailwind CSS with utility classes
+- Use shadcn/ui components as the primary component library
+- Prefer `clsx` or `cn` utility for conditional classes (from `@/lib/utils`)
+- Keep component-specific styles close to components
+- Use CSS variables for consistent theming
+- Follow shadcn/ui design system patterns and conventions
+- Customize shadcn components through CSS variables and Tailwind classes
+- Place custom shadcn components in `@/components/ui/`
+- **Theme Consistency**: Always respect the existing theme - do not add new colors or custom colors
+- **Standard Colors Only**: Use only predefined theme colors (primary, secondary, accent, etc.) and standard Tailwind color palette
+- **Visual Standards**: Maintain visual consistency by adhering to the established color scheme and design tokens
+
+### Component Library (shadcn/ui)
+- **Always Search shadcn First**: Before building any UI component, search the [shadcn/ui documentation](https://ui.shadcn.com) for latest examples and patterns
+- **Built on Radix**: shadcn/ui is built on Radix UI primitives - leverage Radix documentation for advanced API usage and customization
+- **Use Latest Examples**: Always reference the most current shadcn examples and copy-paste their latest code patterns
+- **API Documentation**: Check both shadcn and Radix API documentation to ensure you're using the most up-to-date props and methods
+- Use shadcn/ui components as the foundation for all UI elements
+- Customize components through the `components.json` configuration
+- Follow shadcn naming conventions for component files (kebab-case)
+- Use component composition over creating new components from scratch
+- Leverage shadcn's built-in accessibility features and ARIA patterns
+- Extend components using `className` prop and Tailwind utilities
+- For complex customizations, create wrapper components that extend shadcn base components
+
+**Development Workflow for Visual Components:**
+1. Search [shadcn/ui components](https://ui.shadcn.com/docs/components) for existing solutions
+2. Check [Radix UI documentation](https://www.radix-ui.com/primitives) for advanced API features
+3. Copy the latest example code from shadcn documentation
+4. Adapt and extend using Tailwind classes and proper TypeScript typing
+5. Test accessibility features and keyboard navigation
+
+Example shadcn component usage:
+```typescript
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+
+// Good: Extending with additional classes
+<Button className="w-full bg-primary hover:bg-primary/90">
+  Submit Form
+</Button>
+
+// Good: Composing multiple components
+<div className="grid w-full max-w-sm items-center gap-1.5">
+  <Label htmlFor="email">Email</Label>
+  <Input type="email" id="email" placeholder="Email" />
+</div>
+```
+
+### Testing
+- Unit tests: `.test.ts` or `.spec.ts` suffix
+- E2E tests: Place in `playwright/` directory
+- Test files should mirror source structure
+- Use descriptive test names that explain behavior
+- Test business logic thoroughly
+- Mock external dependencies appropriately
+
+## Import Organization
+1. External libraries (React, Next.js, etc.)
+2. Internal utilities and types (`@/lib`, `@/utils`)
+3. Server/tRPC imports (`@/server`)
+4. shadcn/ui components (`@/components/ui`)
+5. Global components (`@/components`)
+6. Feature-specific imports (`@/features`)
+7. Relative imports (`./ `, `../`)
+
+Example:
+```typescript
+import { useState } from 'react';
+import { NextPage } from 'next';
+import { trpc } from '@/utils/trpc';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ItemContainer } from '@/features/containers/item-details.container';
+import { useDataFilters } from '@/features/hooks/use-data-filters.hook';
+import type { ItemData } from '@/features/types/item-data.type';
+import { UserForm } from './user-form.component';
+```
+
+## Error Handling
+- Use tRPC error handling patterns
+- Provide user-friendly error messages
+- Log errors appropriately for debugging
+- Use try-catch blocks for async operations
+- Implement proper error boundaries
+- Handle edge cases gracefully
+
+## Performance
+- Use React.memo() for expensive components
+- Implement proper loading states and skeletons
+- Use tRPC's caching features
+- Optimize database queries with proper indexing
+- Implement code splitting where appropriate
+- Monitor and optimize Core Web Vitals
+
+## Comments & Documentation
+- Document complex logic and business rules
+- Use JSDoc for public functions and components
+- Explain non-obvious decisions and trade-offs
+- Keep comments up-to-date with code changes
+- Prefer self-documenting code over excessive comments
+- Document APIs and interfaces thoroughly
+
+## Security & Best Practices
+- Validate all user inputs with Zod schemas
+- Implement proper authentication checks
+- Use role-based access control (RBAC)
+- Sanitize user-generated content
+- Follow OWASP security guidelines
+- Implement proper session management
+
+## Git Conventions
+- Use conventional commit messages
+- Feature branches: `feature/description`
+- Bug fixes: `fix/description`
+- Keep commits atomic and focused
+- Write clear commit messages
+- Use proper branching strategies
+
+When generating code, always follow these conventions and write code that demonstrates senior-level React/TypeScript expertise with emphasis on simplicity, readability, and maintainability.
