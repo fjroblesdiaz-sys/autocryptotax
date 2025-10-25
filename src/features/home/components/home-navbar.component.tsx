@@ -15,9 +15,11 @@ export const HomeNavbar = () => {
   const navLinks = isConnected ? [
     { href: '/dashboard', label: 'Panel' },
     { href: '/reports', label: 'Informes' },
+    { href: '/airdrop', label: 'Airdrop' },
   ] : [
     { href: '#features', label: 'Características' },
     { href: '#how-it-works', label: 'Cómo funciona' },
+    { href: '/airdrop', label: 'Airdrop' },
   ];
 
   return (
