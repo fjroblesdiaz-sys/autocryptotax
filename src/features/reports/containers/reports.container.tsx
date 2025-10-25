@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/features/auth/hooks/use-auth.hook';
-import { HomeNavbar } from '@/features/home/components/home-navbar.component';
 
 const reportTypes = [
   {
@@ -31,9 +30,7 @@ export const ReportsContainer = () => {
   const { address } = useAuth();
 
   return (
-    <>
-      <HomeNavbar />
-      <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8">
       <div className="space-y-8">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Informes Fiscales</h1>
@@ -77,6 +74,5 @@ export const ReportsContainer = () => {
         </div>
       </div>
     </div>
-    </>
   );
 };
