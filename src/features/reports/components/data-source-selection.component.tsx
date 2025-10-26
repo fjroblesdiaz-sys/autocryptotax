@@ -52,7 +52,7 @@ export const DataSourceSelection = ({ onSelect, selectedSource }: DataSourceSele
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-2xl font-semibold mb-2">Selecciona el Origen de Datos</h2>
+        <h2 className="text-xl font-semibold mb-2">Selecciona el Origen de Datos</h2>
         <p className="text-muted-foreground">
           Elige cómo deseas proporcionar la información de tus transacciones
         </p>
