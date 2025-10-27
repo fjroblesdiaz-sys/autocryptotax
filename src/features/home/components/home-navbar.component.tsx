@@ -52,6 +52,7 @@ export const HomeNavbar = () => {
               <ConnectButton 
                 client={client} 
                 theme="dark"
+                locale='es_ES'  
                 connectButton={{
                   label: "Conectar",
                   style: {
@@ -109,6 +110,7 @@ export const HomeNavbar = () => {
                 <ConnectButton 
                   client={client} 
                   theme="dark"
+                  locale='es_ES'
                   connectButton={{
                     label: "Conectar",
                     style: {

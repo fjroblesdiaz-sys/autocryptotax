@@ -22,7 +22,7 @@ export const HomeContainer = () => {
   return (
     <>
       <HomeHero />
-      <HomeAirdropBanner />
+      {/* <HomeAirdropBanner /> */}
       <Separator />
       <HomeFeatures />
       <Separator />
