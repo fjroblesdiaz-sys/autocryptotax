@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Providers } from '@/components/providers';
 import { AppLayout } from '@/components/layouts/app-layout';
-import { TopLoadingBar } from '@/components/ui/top-loading-bar';
 import "./globals.css";
 
 const geistSans = Geist({
@@ -36,7 +35,6 @@ export default function RootLayout({
         className={`antialiased`}
       >
         <Providers>
-          <TopLoadingBar />
           <AppLayout>
             {children}
           </AppLayout>

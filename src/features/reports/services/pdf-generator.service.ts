@@ -6,7 +6,7 @@
  * For official electronic submission to AEAT, use their official software.
  */
 
-import { PDFDocument, PDFPage, PDFFont, rgb, StandardFonts } from 'pdf-lib';
+import { PDFDocument, PDFPage, PDFFont, rgb, StandardFonts, degrees } from 'pdf-lib';
 import { SpanishTaxReport, Model100Data } from './report-format.service';
 import { TaxCalculationResult } from './tax-calculation.service';
 
@@ -51,7 +51,7 @@ export async function generateModel100PDF(
         font: helveticaBold,
         color: rgb(1, 0, 0),
         opacity: 0.1,
-        rotate: { angle: -45, type: 'degrees' as const },
+        rotate: degrees(-45),
       });
     }
 
