@@ -62,8 +62,14 @@ export const DataInputContainer = ({ sourceParam }: DataInputContainerProps) => 
   const handleSubmit = (
     data: WalletData | CSVUploadData | APIKeyData | OAuthData | ManualEntryTransaction[]
   ) => {
+    console.log('[DataInput] Submitting data:', data);
+    
     // Save collected data to session storage
     reportDataStorage.save({ sourceData: data });
+    
+    // Verify it was saved
+    const saved = reportDataStorage.get();
+    console.log('[DataInput] Saved data verification:', saved);
     
     // Navigate to report configuration page
     router.push('/reports/configure');

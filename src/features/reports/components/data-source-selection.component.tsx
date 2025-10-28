@@ -19,19 +19,20 @@ const dataSources = [
     badge: 'Recomendado',
   },
   {
-    type: 'csv' as DataSourceType,
-    label: 'Archivo CSV',
-    description: 'Sube archivos CSV exportados de Binance, Coinbase u otros exchanges',
-    icon: FileSpreadsheet,
-    badge: 'Popular',
-  },
-  {
     type: 'api-key' as DataSourceType,
     label: 'API Key',
     description: 'Conecta mediante API key para obtener transacciones automáticamente',
     icon: Key,
     badge: 'Automático',
   },
+  {
+    type: 'csv' as DataSourceType,
+    label: 'Archivo CSV',
+    description: 'Sube archivos CSV exportados de Binance, Coinbase u otros exchanges',
+    icon: FileSpreadsheet,
+    badge: 'Popular',
+  },
+
   {
     type: 'oauth' as DataSourceType,
     label: 'Autorización OAuth',

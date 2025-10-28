@@ -4,8 +4,9 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { ReportGenerationWizard } from '@/features/reports/components/report-generation-wizard.component';
 import { reportDataStorage } from '@/features/reports/utils/report-data-storage';
-import { GeneratedReport, WalletData } from '@/features/reports/types/reports.types';
+import { GeneratedReport, WalletData, APIKeyData } from '@/features/reports/types/reports.types';
 import { useReportApi } from '@/features/reports/hooks/use-report-api.hook';
+import { useExchangeApi } from '@/features/reports/hooks/use-exchange-api.hook';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
 
@@ -16,6 +17,7 @@ import { AlertCircle } from 'lucide-react';
 export const ReportGenerationContainer = () => {
   const router = useRouter();
   const { generateReport, isLoading, error } = useReportApi();
+  const { generateReport: generateFromExchange, isLoading: isExchangeLoading, error: exchangeError } = useExchangeApi();
   const [progress, setProgress] = useState(0);
   const [isReady, setIsReady] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -40,9 +42,10 @@ export const ReportGenerationContainer = () => {
       return;
     }
     
-    // Only support wallet source for now
-    if (storedData.dataSource !== 'wallet') {
-      setErrorMessage('Solo se soporta la generación de informes desde cartera conectada en este momento');
+    // Validate supported data sources
+    if (storedData.dataSource !== 'wallet' && storedData.dataSource !== 'api-key') {
+      setErrorMessage(`El origen de datos ${storedData.dataSource} no está implementado aún`);
+      setIsReady(true);
       return;
     }
     
@@ -58,8 +61,6 @@ export const ReportGenerationContainer = () => {
     setErrorMessage(null);
 
     try {
-      const walletData = storedData.sourceData as WalletData;
-
       // Simulate progress updates
       const progressInterval = setInterval(() => {
         setProgress(prev => {
@@ -71,20 +72,35 @@ export const ReportGenerationContainer = () => {
         });
       }, 500);
 
-      // Call the real API (request both CSV and prepare for PDF)
-      const result = await generateReport({
-        walletAddress: walletData.address,
-        chain: walletData.chain || 'ethereum',
-        fiscalYear: storedData.fiscalYear!,
-        reportType: storedData.reportType!,
-        dateRange: walletData.dateRange,
-        format: 'csv', // Get CSV for display/download
-      });
+      let result;
+
+      // Handle different data sources
+      if (storedData.dataSource === 'wallet') {
+        const walletData = storedData.sourceData as WalletData;
+        
+        result = await generateReport({
+          walletAddress: walletData.address,
+          chain: walletData.chain || 'ethereum',
+          fiscalYear: storedData.fiscalYear!,
+          reportType: storedData.reportType!,
+          dateRange: walletData.dateRange,
+          format: 'csv',
+        });
+      } else if (storedData.dataSource === 'api-key') {
+        const apiKeyData = storedData.sourceData as APIKeyData;
+        
+        result = await generateFromExchange(
+          apiKeyData,
+          storedData.fiscalYear!,
+          storedData.reportType!,
+          'csv'
+        );
+      }
 
       clearInterval(progressInterval);
 
       if (!result) {
-        throw new Error(error || 'Error desconocido al generar el informe');
+        throw new Error(error || exchangeError || 'Error desconocido al generar el informe');
       }
 
       setProgress(100);
@@ -94,15 +110,15 @@ export const ReportGenerationContainer = () => {
         id: result.reportId,
         reportType: storedData.reportType!,
         fiscalYear: storedData.fiscalYear!,
-        generatedAt: new Date(result.summary.generatedAt),
+        generatedAt: new Date(result.report?.metadata?.generatedAt || Date.now()),
         status: 'completed',
         dataSource: storedData.dataSource!,
         downloadUrl: result.downloadUrl,
         summary: {
-          totalTransactions: result.summary.totalTransactions,
-          totalGains: result.summary.totalGains,
-          totalLosses: result.summary.totalLosses,
-          netResult: result.summary.netResult,
+          totalTransactions: result.taxCalculation?.transactionCount || 0,
+          totalGains: result.taxCalculation?.totalGains || 0,
+          totalLosses: result.taxCalculation?.totalLosses || 0,
+          netResult: result.taxCalculation?.netGainLoss || 0,
         },
       };
 
@@ -110,7 +126,7 @@ export const ReportGenerationContainer = () => {
       reportDataStorage.save({ 
         reportId: generatedReport.id,
         generatedReport,
-        reportCSV: result.csv, // Store CSV data for download
+        reportCSV: result.csv,
       });
 
       // Small delay to show 100% completion
@@ -127,7 +143,7 @@ export const ReportGenerationContainer = () => {
 
   const handleBack = () => {
     // Can't go back while generating
-    if (!isLoading) {
+    if (!isLoading && !isExchangeLoading) {
       router.push('/reports/configure');
     }
   };
@@ -159,11 +175,11 @@ export const ReportGenerationContainer = () => {
         </div>
 
         {/* Error Display */}
-        {(errorMessage || error) && (
+        {(errorMessage || error || exchangeError) && (
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              {errorMessage || error}
+              {errorMessage || error || exchangeError}
             </AlertDescription>
           </Alert>
         )}
@@ -172,7 +188,7 @@ export const ReportGenerationContainer = () => {
         <ReportGenerationWizard
           onGenerate={handleRetry}
           onBack={handleBack}
-          isGenerating={isLoading}
+          isGenerating={isLoading || isExchangeLoading}
           generationProgress={progress}
         />
       </div>

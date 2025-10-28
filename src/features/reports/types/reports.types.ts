@@ -1,6 +1,6 @@
 export type DataSourceType = 'wallet' | 'csv' | 'manual' | 'api-key' | 'oauth';
 
-export type ExchangePlatform = 'binance' | 'coinbase' | 'kraken' | 'other';
+export type ExchangePlatform = 'binance' | 'coinbase' | 'whitebit' | 'kraken' | 'other';
 
 export type ReportType = 'model-720' | 'model-100' | 'model-714';
 
@@ -24,6 +24,7 @@ export interface APIKeyData {
   platform: ExchangePlatform;
   apiKey: string;
   apiSecret: string;
+  passphrase?: string; // For Coinbase
   dateRange?: {
     from: Date;
     to: Date;

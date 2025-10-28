@@ -18,8 +18,13 @@ export const ReportConfigContainer = () => {
     // Validate that we have the required data to be on this page
     const storedData = reportDataStorage.get();
     
+    console.log('[ReportConfig] Stored data:', storedData);
+    console.log('[ReportConfig] Has dataSource:', !!storedData.dataSource);
+    console.log('[ReportConfig] Has sourceData:', !!storedData.sourceData);
+    
     if (!storedData.dataSource || !storedData.sourceData) {
       // Missing required data, redirect back to start
+      console.log('[ReportConfig] Missing required data, redirecting to /reports');
       router.push('/reports');
       return;
     }
@@ -29,6 +34,7 @@ export const ReportConfigContainer = () => {
     reportDataStorage.clear();
     reportDataStorage.save(keepData);
     
+    console.log('[ReportConfig] Ready, data preserved:', keepData);
     setIsReady(true);
   }, [router]);
 

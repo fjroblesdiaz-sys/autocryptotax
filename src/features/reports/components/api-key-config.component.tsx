@@ -24,17 +24,23 @@ export const APIKeyConfig = ({ onSubmit, onBack }: APIKeyConfigProps) => {
   const [platform, setPlatform] = useState<ExchangePlatform>('binance');
   const [apiKey, setApiKey] = useState('');
   const [apiSecret, setApiSecret] = useState('');
+  const [passphrase, setPassphrase] = useState('');
   const [showSecret, setShowSecret] = useState(false);
+  const [showPassphrase, setShowPassphrase] = useState(false);
   const [dateFrom, setDateFrom] = useState<Date>();
   const [dateTo, setDateTo] = useState<Date>();
 
+  const requiresPassphrase = platform === 'coinbase';
+
   const handleSubmit = () => {
     if (!apiKey || !apiSecret) return;
+    if (requiresPassphrase && !passphrase) return;
 
     const data: APIKeyData = {
       platform,
       apiKey,
       apiSecret,
+      ...(requiresPassphrase && { passphrase }),
       ...(dateFrom && dateTo && {
         dateRange: {
           from: dateFrom,
@@ -66,6 +72,8 @@ export const APIKeyConfig = ({ onSubmit, onBack }: APIKeyConfigProps) => {
         <AlertDescription>
           Tus claves API se almacenan de forma segura y encriptada. Solo se utilizan para obtener
           tu historial de transacciones. Asegúrate de crear una API key con permisos de solo lectura.
+          <br /><br />
+          <strong>Modo Demo:</strong> Para probar sin API real, usa &quot;test&quot; como API Key y Secret.
         </AlertDescription>
       </Alert>
 
@@ -86,9 +94,8 @@ export const APIKeyConfig = ({ onSubmit, onBack }: APIKeyConfigProps) => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="binance">Binance</SelectItem>
-                <SelectItem value="coinbase">Coinbase</SelectItem>
-                <SelectItem value="kraken">Kraken</SelectItem>
-                <SelectItem value="other">Otro</SelectItem>
+                <SelectItem value="coinbase" disabled>Coinbase (Próximamente)</SelectItem>
+                <SelectItem value="whitebit" disabled>WhiteBit (Próximamente)</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -132,6 +139,36 @@ export const APIKeyConfig = ({ onSubmit, onBack }: APIKeyConfigProps) => {
               </Button>
             </div>
           </div>
+
+          {/* Passphrase (Only for Coinbase) */}
+          {requiresPassphrase && (
+            <div className="space-y-2">
+              <Label htmlFor="passphrase">Passphrase</Label>
+              <div className="relative">
+                <Input
+                  id="passphrase"
+                  type={showPassphrase ? 'text' : 'password'}
+                  placeholder="Ingresa tu passphrase de API"
+                  value={passphrase}
+                  onChange={(e) => setPassphrase(e.target.value)}
+                  className="pr-10"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-0 top-0 h-full px-3"
+                  onClick={() => setShowPassphrase(!showPassphrase)}
+                >
+                  {showPassphrase ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
 
           {/* Date Range (Optional) */}
           <div className="space-y-2">
@@ -199,7 +236,10 @@ export const APIKeyConfig = ({ onSubmit, onBack }: APIKeyConfigProps) => {
             <Button variant="outline" onClick={onBack}>
               Cancelar
             </Button>
-            <Button onClick={handleSubmit} disabled={!apiKey || !apiSecret}>
+            <Button 
+              onClick={handleSubmit} 
+              disabled={!apiKey || !apiSecret || (requiresPassphrase && !passphrase)}
+            >
               Conectar API
             </Button>
           </div>
@@ -227,7 +267,16 @@ export const APIKeyConfig = ({ onSubmit, onBack }: APIKeyConfigProps) => {
               <li>Ve a Settings → API</li>
               <li>Crea una nueva API key</li>
               <li>Selecciona permisos de solo lectura</li>
-              <li>Copia tu API Key y Secret</li>
+              <li>Copia tu API Key, Secret y Passphrase</li>
+            </ol>
+          </div>
+          <div>
+            <h4 className="font-semibold mb-2">WhiteBit</h4>
+            <ol className="list-decimal list-inside text-sm text-muted-foreground space-y-1">
+              <li>Ve a tu perfil → API Keys</li>
+              <li>Crea una nueva API key</li>
+              <li>Activa solo permisos de lectura (Trading history)</li>
+              <li>Guarda tu API Key y Secret</li>
             </ol>
           </div>
           <Alert variant="destructive" className="mt-4">

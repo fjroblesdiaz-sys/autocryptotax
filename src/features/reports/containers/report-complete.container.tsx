@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { ReportComplete } from '@/features/reports/components/report-complete.component';
-import { GeneratedReport, WalletData } from '@/features/reports/types/reports.types';
+import { GeneratedReport, WalletData, APIKeyData } from '@/features/reports/types/reports.types';
 import { reportDataStorage } from '@/features/reports/utils/report-data-storage';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -79,29 +79,58 @@ export const ReportCompleteContainer = ({ reportId }: ReportCompleteContainerPro
 
   const downloadPDF = async () => {
     const storedData = reportDataStorage.get();
-    const walletData = storedData.sourceData as WalletData;
 
-    if (!walletData) return;
+    if (!storedData.sourceData) return;
 
     try {
-      // Call API to generate PDF
-      const response = await fetch('/api/reports/generate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          walletAddress: walletData.address,
-          chain: walletData.chain || 'ethereum',
-          fiscalYear: storedData.fiscalYear,
-          reportType: storedData.reportType,
-          dateRange: walletData.dateRange ? {
-            from: walletData.dateRange.from.toISOString(),
-            to: walletData.dateRange.to.toISOString(),
-          } : undefined,
-          format: 'pdf',
-        }),
-      });
+      let response: Response;
+
+      // Handle different data sources
+      if (storedData.dataSource === 'wallet') {
+        const walletData = storedData.sourceData as WalletData;
+        
+        response = await fetch('/api/reports/generate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            walletAddress: walletData.address,
+            chain: walletData.chain || 'ethereum',
+            fiscalYear: storedData.fiscalYear,
+            reportType: storedData.reportType,
+            dateRange: walletData.dateRange ? {
+              from: walletData.dateRange.from.toISOString(),
+              to: walletData.dateRange.to.toISOString(),
+            } : undefined,
+            format: 'pdf',
+          }),
+        });
+      } else if (storedData.dataSource === 'api-key') {
+        const apiKeyData = storedData.sourceData as APIKeyData;
+        
+        response = await fetch('/api/reports/generate-from-exchange', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            exchange: apiKeyData.platform,
+            apiKey: apiKeyData.apiKey,
+            apiSecret: apiKeyData.apiSecret,
+            passphrase: apiKeyData.passphrase,
+            fiscalYear: storedData.fiscalYear,
+            reportType: storedData.reportType,
+            dateRange: apiKeyData.dateRange ? {
+              from: apiKeyData.dateRange.from.toISOString(),
+              to: apiKeyData.dateRange.to.toISOString(),
+            } : undefined,
+            format: 'pdf',
+          }),
+        });
+      } else {
+        throw new Error(`Unsupported data source: ${storedData.dataSource}`);
+      }
 
       if (!response.ok) {
         throw new Error('Failed to generate PDF');
