@@ -1,10 +1,9 @@
-import { ProtectedRoute } from '@/features/auth/components/protected-route.component';
-import { ReportsContainer } from '@/features/reports/containers/reports.container';
+import { DataSourceSelectionContainer } from '@/features/reports/containers/data-source-selection.container';
 
+/**
+ * Reports landing page - Data Source Selection
+ * First step in the report generation flow
+ */
 export default function ReportsPage() {
-  return (
-    <ProtectedRoute>
-      <ReportsContainer />
-    </ProtectedRoute>
-  );
+  return <DataSourceSelectionContainer />;
 }
