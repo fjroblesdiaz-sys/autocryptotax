@@ -41,19 +41,94 @@ type GenerateReportRequest = z.infer<typeof GenerateReportSchema>;
 function convertExchangeTransactions(
   exchangeTransactions: ExchangeTransaction[]
 ): ProcessedTransaction[] {
-  return exchangeTransactions.map((tx) => ({
-    hash: tx.id,
-    date: new Date(tx.timestamp),
-    type: tx.type === 'buy' ? 'buy' : tx.type === 'sell' ? 'sell' : 'transfer_in',
-    asset: tx.asset,
-    amount: tx.amount,
-    priceEUR: tx.price,
-    valueEUR: tx.total,
-    fee: tx.fee,
-    feeValueEUR: tx.fee * tx.price,
-    from: tx.type === 'buy' ? tx.exchange : undefined,
-    to: tx.type === 'sell' ? tx.exchange : undefined,
-  }));
+  console.log(`[Exchange API] Converting ${exchangeTransactions.length} transactions to ProcessedTransaction format`);
+  
+  return exchangeTransactions.map((tx) => {
+    // Map exchange transaction types to tax calculation types
+    let type: ProcessedTransaction['type'];
+    switch (tx.type) {
+      case 'buy':
+        type = 'buy';
+        break;
+      case 'sell':
+        type = 'sell';
+        break;
+      case 'deposit':
+        // Deposits are acquisitions (like buying)
+        type = 'transfer_in';
+        break;
+      case 'withdrawal':
+        // Withdrawals are disposals (like selling)
+        type = 'transfer_out';
+        break;
+      case 'transfer':
+        type = 'transfer_in';
+        break;
+      default:
+        type = 'transfer_in';
+    }
+
+    // For deposits/withdrawals with no price, we need to use a market price
+    // In production, this should fetch from a price API
+    // For now, use mock prices for common cryptocurrencies
+    let priceEUR = tx.price;
+    let valueEUR = tx.total;
+    
+    if (tx.price === 0 || tx.total === 0) {
+      // Mock prices in EUR (approximate market prices for testing)
+      const mockPrices: Record<string, number> = {
+        // Stablecoins
+        'USDT': 0.92,
+        'USDC': 0.92,
+        'BUSD': 0.92,
+        'DAI': 0.92,
+        'TUSD': 0.92,
+        // Major cryptocurrencies
+        'BTC': 85000,
+        'ETH': 3200,
+        'BNB': 580,
+        'SOL': 140,
+        'XRP': 0.50,
+        'ADA': 0.45,
+        'DOGE': 0.08,
+        'DOT': 6.5,
+        'MATIC': 0.85,
+        'LTC': 85,
+        'AVAX': 35,
+        'LINK': 14,
+        'UNI': 8,
+        'ATOM': 10,
+        // Other tokens
+        'NXPC': 0.01, // Unknown token, use minimal price
+      };
+      
+      priceEUR = mockPrices[tx.asset] || 1.0; // Default to 1 EUR if not found
+      valueEUR = tx.amount * priceEUR;
+      
+      if (!mockPrices[tx.asset]) {
+        console.warn(`[Exchange API] No mock price for ${tx.asset}, using 1 EUR`);
+      }
+    }
+
+    // Calculate fee value
+    const feeValueEUR = tx.fee > 0 && priceEUR > 0 ? tx.fee * priceEUR : 0;
+
+    const processed: ProcessedTransaction = {
+      hash: tx.id,
+      date: new Date(tx.timestamp),
+      type,
+      asset: tx.asset,
+      amount: tx.amount,
+      priceEUR,
+      valueEUR,
+      fee: tx.fee,
+      feeValueEUR,
+      from: tx.type === 'buy' || tx.type === 'deposit' ? tx.exchange : undefined,
+      to: tx.type === 'sell' || tx.type === 'withdrawal' ? tx.exchange : undefined,
+    };
+
+    return processed;
+  });
 }
 
 export async function POST(request: NextRequest) {
@@ -190,10 +265,26 @@ export async function POST(request: NextRequest) {
         taxableAmount: taxCalculation.summary.netResult,
         transactionCount: exchangeTransactions.length,
       },
+      // Add summary field for frontend compatibility
+      summary: {
+        totalTransactions: taxCalculation.summary.totalTransactions,
+        totalGains: taxCalculation.summary.totalGains,
+        totalLosses: taxCalculation.summary.totalLosses,
+        netResult: taxCalculation.summary.netResult,
+        generatedAt: new Date().toISOString(),
+      },
       format: validated.format,
       ...(validated.format === 'csv' && { csv: formattedOutput }),
       ...(validated.format === 'json' && { data: formattedOutput }),
     };
+
+    console.log(`[Exchange API] Successfully generated report:`, {
+      reportId,
+      transactionCount: exchangeTransactions.length,
+      totalGains: taxCalculation.summary.totalGains,
+      totalLosses: taxCalculation.summary.totalLosses,
+      netResult: taxCalculation.summary.netResult,
+    });
 
     return NextResponse.json(response, { status: 200 });
 

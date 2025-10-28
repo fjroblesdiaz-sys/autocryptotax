@@ -2,7 +2,7 @@
 
 import { DataSourceSelection } from '@/features/reports/components/data-source-selection.component';
 import { DataSourceType } from '@/features/reports/types/reports.types';
-import { reportDataStorage } from '@/features/reports/utils/report-data-storage';
+import { useReportData } from '@/features/reports/context/report-data.context';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
@@ -12,15 +12,18 @@ import { useEffect } from 'react';
  */
 export const DataSourceSelectionContainer = () => {
   const router = useRouter();
+  const { clearAll, setDataSource } = useReportData();
 
   // Clear any existing report data when starting fresh
   useEffect(() => {
-    reportDataStorage.clear();
-  }, []);
+    clearAll();
+  }, [clearAll]);
 
   const handleSelectDataSource = (source: DataSourceType) => {
-    // Save selected data source to session storage
-    reportDataStorage.save({ dataSource: source });
+    console.log('[DataSourceSelection] Selected source:', source);
+    
+    // Save to context
+    setDataSource(source);
     
     // Navigate to data input page with source as query param
     router.push(`/reports/data-input?source=${source}`);

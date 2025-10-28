@@ -15,7 +15,7 @@ import {
   ManualEntryTransaction,
   DataSourceType,
 } from '@/features/reports/types/reports.types';
-import { reportDataStorage } from '@/features/reports/utils/report-data-storage';
+import { useReportData } from '@/features/reports/context/report-data.context';
 import { useEffect, useState } from 'react';
 
 interface DataInputContainerProps {
@@ -29,55 +29,43 @@ interface DataInputContainerProps {
 export const DataInputContainer = ({ sourceParam }: DataInputContainerProps) => {
   const router = useRouter();
   const { address } = useAuth();
+  const { dataSource, setDataSource, setSourceData } = useReportData();
   
   const [source, setSource] = useState<DataSourceType | null>(null);
 
   useEffect(() => {
-    // Validate source and ensure it matches sessionStorage
-    const storedSource = reportDataStorage.getField('dataSource');
-    
     if (!sourceParam) {
       // No source specified, redirect back to source selection
+      console.log('[DataInput] No source param, redirecting to /reports');
       router.push('/reports');
       return;
     }
     
     const sourceType = sourceParam as DataSourceType;
+    console.log('[DataInput] Using data source:', sourceType);
     
-    if (storedSource && storedSource !== sourceType) {
-      // Mismatch between URL and storage, clear and redirect
-      reportDataStorage.clear();
-      router.push('/reports');
-      return;
-    }
-    
-    // Save source if not already saved
-    if (!storedSource) {
-      reportDataStorage.save({ dataSource: sourceType });
+    // Sync with context
+    if (sourceType !== dataSource) {
+      setDataSource(sourceType);
     }
     
     setSource(sourceType);
-  }, [sourceParam, router]);
+  }, [sourceParam, dataSource, router, setDataSource]);
 
   const handleSubmit = (
     data: WalletData | CSVUploadData | APIKeyData | OAuthData | ManualEntryTransaction[]
   ) => {
     console.log('[DataInput] Submitting data:', data);
     
-    // Save collected data to session storage
-    reportDataStorage.save({ sourceData: data });
-    
-    // Verify it was saved
-    const saved = reportDataStorage.get();
-    console.log('[DataInput] Saved data verification:', saved);
+    // Save to context
+    setSourceData(data);
     
     // Navigate to report configuration page
     router.push('/reports/configure');
   };
 
   const handleBack = () => {
-    // Clear collected data and go back to source selection
-    reportDataStorage.clear();
+    // Go back to source selection
     router.push('/reports');
   };
 

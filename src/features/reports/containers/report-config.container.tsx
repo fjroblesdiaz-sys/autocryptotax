@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { ReportGenerationWizard } from '@/features/reports/components/report-generation-wizard.component';
 import { ReportType } from '@/features/reports/types/reports.types';
-import { reportDataStorage } from '@/features/reports/utils/report-data-storage';
+import { useReportData } from '@/features/reports/context/report-data.context';
 
 /**
  * Report Configuration Container
@@ -12,40 +12,30 @@ import { reportDataStorage } from '@/features/reports/utils/report-data-storage'
  */
 export const ReportConfigContainer = () => {
   const router = useRouter();
+  const { dataSource, sourceData, setReportType, setFiscalYear } = useReportData();
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
     // Validate that we have the required data to be on this page
-    const storedData = reportDataStorage.get();
+    console.log('[ReportConfig] Context data:', { dataSource, hasSourceData: !!sourceData });
     
-    console.log('[ReportConfig] Stored data:', storedData);
-    console.log('[ReportConfig] Has dataSource:', !!storedData.dataSource);
-    console.log('[ReportConfig] Has sourceData:', !!storedData.sourceData);
-    
-    if (!storedData.dataSource || !storedData.sourceData) {
+    if (!dataSource || !sourceData) {
       // Missing required data, redirect back to start
       console.log('[ReportConfig] Missing required data, redirecting to /reports');
       router.push('/reports');
       return;
     }
     
-    // Clear any previously saved reportType to ensure fresh selection
-    const { reportType, fiscalYear, reportId, generatedReport, reportCSV, reportJSON, ...keepData } = storedData;
-    reportDataStorage.clear();
-    reportDataStorage.save(keepData);
-    
-    console.log('[ReportConfig] Ready, data preserved:', keepData);
+    console.log('[ReportConfig] Ready with data source:', dataSource);
     setIsReady(true);
-  }, [router]);
+  }, [dataSource, sourceData, router]);
 
   const handleGenerate = (reportType: ReportType, year: number) => {
-    // Save report configuration (always use what user just selected)
-    reportDataStorage.save({
-      reportType,
-      fiscalYear: year,
-    });
+    console.log('[ReportConfig] Saving report config:', { reportType, year });
     
-    console.log('Saving report config:', { reportType, year }); // Debug log
+    // Save to context
+    setReportType(reportType);
+    setFiscalYear(year);
     
     // Navigate to generation page
     router.push('/reports/generate');
@@ -53,9 +43,8 @@ export const ReportConfigContainer = () => {
 
   const handleBack = () => {
     // Go back to data input page with the source
-    const source = reportDataStorage.getField('dataSource');
-    if (source) {
-      router.push(`/reports/data-input?source=${source}`);
+    if (dataSource) {
+      router.push(`/reports/data-input?source=${dataSource}`);
     } else {
       router.push('/reports');
     }

@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { ReportComplete } from '@/features/reports/components/report-complete.component';
 import { GeneratedReport, WalletData, APIKeyData } from '@/features/reports/types/reports.types';
-import { reportDataStorage } from '@/features/reports/utils/report-data-storage';
+import { useReportData } from '@/features/reports/context/report-data.context';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -18,49 +18,65 @@ interface ReportCompleteContainerProps {
  */
 export const ReportCompleteContainer = ({ reportId }: ReportCompleteContainerProps) => {
   const router = useRouter();
+  const { generatedReport, reportCSV, dataSource, sourceData, reportType, fiscalYear } = useReportData();
   const [report, setReport] = useState<GeneratedReport | null>(null);
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
+    console.log('[ReportComplete] reportId from URL:', reportId);
+    console.log('[ReportComplete] Context report:', generatedReport);
+    
     if (!reportId) {
       // No report ID, redirect to start
+      console.log('[ReportComplete] No reportId, redirecting to /reports');
       router.push('/reports');
       return;
     }
 
-    // Validate stored report ID matches URL
-    const storedReportId = reportDataStorage.getField('reportId');
-    if (storedReportId !== reportId) {
-      router.push('/reports');
-      return;
-    }
-
-    // Get the generated report from storage
-    const storedData = reportDataStorage.get();
-    
-    if (!storedData.generatedReport) {
+    if (!generatedReport) {
       // No generated report, redirect to start
+      console.log('[ReportComplete] No generatedReport in context, redirecting to /reports');
       router.push('/reports');
       return;
     }
 
-    setReport(storedData.generatedReport);
+    // Validate report ID matches URL
+    if (generatedReport.id !== reportId) {
+      console.log('[ReportComplete] Report ID mismatch:', {
+        context: generatedReport.id,
+        url: reportId,
+      });
+      console.log('[ReportComplete] Redirecting to /reports due to ID mismatch');
+      router.push('/reports');
+      return;
+    }
+
+    console.log('[ReportComplete] Report loaded successfully');
+    setReport(generatedReport);
     setIsReady(true);
-  }, [reportId, router]);
+  }, [reportId, generatedReport, router]);
 
   const handleDownload = async () => {
     if (!report) return;
 
     try {
-      // Get the report data from storage
-      const storedData = reportDataStorage.get();
-      
       // Download PDF from API
       await downloadPDF();
       
-      // Also download CSV as backup
-      if (storedData.generatedReport) {
-        const csvContent = generateCSVReport(storedData.generatedReport);
+      // Also download CSV if available
+      if (reportCSV) {
+        const blob = new Blob([reportCSV], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `informe-fiscal-${report.reportType}-${report.fiscalYear}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      } else if (generatedReport) {
+        // Fallback: generate CSV from report data
+        const csvContent = generateCSVReport(generatedReport);
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
@@ -78,16 +94,17 @@ export const ReportCompleteContainer = ({ reportId }: ReportCompleteContainerPro
   };
 
   const downloadPDF = async () => {
-    const storedData = reportDataStorage.get();
-
-    if (!storedData.sourceData) return;
+    if (!sourceData || !reportType || !fiscalYear) {
+      console.error('[ReportComplete] Missing data for PDF download');
+      return;
+    }
 
     try {
       let response: Response;
 
       // Handle different data sources
-      if (storedData.dataSource === 'wallet') {
-        const walletData = storedData.sourceData as WalletData;
+      if (dataSource === 'wallet') {
+        const walletData = sourceData as WalletData;
         
         response = await fetch('/api/reports/generate', {
           method: 'POST',
@@ -97,8 +114,8 @@ export const ReportCompleteContainer = ({ reportId }: ReportCompleteContainerPro
           body: JSON.stringify({
             walletAddress: walletData.address,
             chain: walletData.chain || 'ethereum',
-            fiscalYear: storedData.fiscalYear,
-            reportType: storedData.reportType,
+            fiscalYear: fiscalYear,
+            reportType: reportType,
             dateRange: walletData.dateRange ? {
               from: walletData.dateRange.from.toISOString(),
               to: walletData.dateRange.to.toISOString(),
@@ -106,8 +123,8 @@ export const ReportCompleteContainer = ({ reportId }: ReportCompleteContainerPro
             format: 'pdf',
           }),
         });
-      } else if (storedData.dataSource === 'api-key') {
-        const apiKeyData = storedData.sourceData as APIKeyData;
+      } else if (dataSource === 'api-key') {
+        const apiKeyData = sourceData as APIKeyData;
         
         response = await fetch('/api/reports/generate-from-exchange', {
           method: 'POST',
@@ -119,8 +136,8 @@ export const ReportCompleteContainer = ({ reportId }: ReportCompleteContainerPro
             apiKey: apiKeyData.apiKey,
             apiSecret: apiKeyData.apiSecret,
             passphrase: apiKeyData.passphrase,
-            fiscalYear: storedData.fiscalYear,
-            reportType: storedData.reportType,
+            fiscalYear: fiscalYear,
+            reportType: reportType,
             dateRange: apiKeyData.dateRange ? {
               from: apiKeyData.dateRange.from.toISOString(),
               to: apiKeyData.dateRange.to.toISOString(),
@@ -129,7 +146,7 @@ export const ReportCompleteContainer = ({ reportId }: ReportCompleteContainerPro
           }),
         });
       } else {
-        throw new Error(`Unsupported data source: ${storedData.dataSource}`);
+        throw new Error(`Unsupported data source: ${dataSource}`);
       }
 
       if (!response.ok) {
@@ -141,7 +158,7 @@ export const ReportCompleteContainer = ({ reportId }: ReportCompleteContainerPro
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `modelo-${storedData.reportType}-${storedData.fiscalYear}.pdf`;
+      link.download = `modelo-${reportType}-${fiscalYear}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -154,11 +171,9 @@ export const ReportCompleteContainer = ({ reportId }: ReportCompleteContainerPro
 
   // Helper function to generate CSV from report
   const generateCSVReport = (report: GeneratedReport): string => {
-    const storedData = reportDataStorage.get();
-    
-    // Use stored CSV from API if available
-    if (storedData.reportCSV) {
-      return storedData.reportCSV;
+    // Use stored CSV from context if available
+    if (reportCSV) {
+      return reportCSV;
     }
     
     // Otherwise, generate simple CSV
@@ -183,8 +198,7 @@ export const ReportCompleteContainer = ({ reportId }: ReportCompleteContainerPro
   };
 
   const handleGenerateAnother = () => {
-    // Clear all data and start over
-    reportDataStorage.clear();
+    // Navigate to reports start
     router.push('/reports');
   };
 
