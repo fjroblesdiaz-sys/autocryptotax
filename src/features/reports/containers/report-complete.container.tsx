@@ -3,8 +3,10 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { ReportComplete } from '@/features/reports/components/report-complete.component';
-import { GeneratedReport } from '@/features/reports/types/reports.types';
+import { GeneratedReport, WalletData } from '@/features/reports/types/reports.types';
 import { reportDataStorage } from '@/features/reports/utils/report-data-storage';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 interface ReportCompleteContainerProps {
   reportId: string | null;
@@ -33,40 +35,122 @@ export const ReportCompleteContainer = ({ reportId }: ReportCompleteContainerPro
       return;
     }
 
-    // Get stored data to create the report object
+    // Get the generated report from storage
     const storedData = reportDataStorage.get();
     
-    if (!storedData.dataSource || !storedData.reportType || !storedData.fiscalYear) {
+    if (!storedData.generatedReport) {
+      // No generated report, redirect to start
       router.push('/reports');
       return;
     }
 
-    // Create mock report object
-    // In a real implementation, you would fetch this from your API
-    const mockReport: GeneratedReport = {
-      id: reportId,
-      reportType: storedData.reportType,
-      fiscalYear: storedData.fiscalYear,
-      generatedAt: new Date(),
-      status: 'completed',
-      dataSource: storedData.dataSource,
-      downloadUrl: '/api/reports/download/mock-report.pdf',
-      summary: {
-        totalTransactions: Math.floor(Math.random() * 200) + 50,
-        totalGains: Math.random() * 10000,
-        totalLosses: Math.random() * 5000,
-        netResult: Math.random() * 5000,
-      },
-    };
-
-    setReport(mockReport);
+    setReport(storedData.generatedReport);
     setIsReady(true);
   }, [reportId, router]);
 
-  const handleDownload = () => {
-    // In a real implementation, this would download the actual report
-    console.log('Downloading report...');
-    alert('Descarga iniciada. En una implementación real, aquí se descargaría el reporte.');
+  const handleDownload = async () => {
+    if (!report) return;
+
+    try {
+      // Get the report data from storage
+      const storedData = reportDataStorage.get();
+      
+      // Download PDF from API
+      await downloadPDF();
+      
+      // Also download CSV as backup
+      if (storedData.generatedReport) {
+        const csvContent = generateCSVReport(storedData.generatedReport);
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `informe-fiscal-${report.reportType}-${report.fiscalYear}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }
+    } catch (error) {
+      console.error('Error downloading report:', error);
+      alert('Error al descargar el informe. Por favor, inténtalo de nuevo.');
+    }
+  };
+
+  const downloadPDF = async () => {
+    const storedData = reportDataStorage.get();
+    const walletData = storedData.sourceData as WalletData;
+
+    if (!walletData) return;
+
+    try {
+      // Call API to generate PDF
+      const response = await fetch('/api/reports/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          walletAddress: walletData.address,
+          chain: walletData.chain || 'ethereum',
+          fiscalYear: storedData.fiscalYear,
+          reportType: storedData.reportType,
+          dateRange: walletData.dateRange ? {
+            from: walletData.dateRange.from.toISOString(),
+            to: walletData.dateRange.to.toISOString(),
+          } : undefined,
+          format: 'pdf',
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate PDF');
+      }
+
+      // Download the PDF
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `modelo-${storedData.reportType}-${storedData.fiscalYear}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+      throw error;
+    }
+  };
+
+  // Helper function to generate CSV from report
+  const generateCSVReport = (report: GeneratedReport): string => {
+    const storedData = reportDataStorage.get();
+    
+    // Use stored CSV from API if available
+    if (storedData.reportCSV) {
+      return storedData.reportCSV;
+    }
+    
+    // Otherwise, generate simple CSV
+    let csv = `Informe Fiscal - ${report.reportType.toUpperCase()}\n`;
+    csv += `Año Fiscal: ${report.fiscalYear}\n`;
+    csv += `Generado: ${format(report.generatedAt, 'PPP', { locale: es })}\n`;
+    csv += `\n`;
+    
+    if (report.summary) {
+      csv += `RESUMEN\n`;
+      csv += `Total de Transacciones,${report.summary.totalTransactions}\n`;
+      csv += `Ganancias Totales,€${report.summary.totalGains.toFixed(2)}\n`;
+      csv += `Pérdidas Totales,€${report.summary.totalLosses.toFixed(2)}\n`;
+      csv += `Resultado Neto,€${report.summary.netResult.toFixed(2)}\n`;
+      csv += `\n`;
+    }
+    
+    csv += `NOTA: Este es un informe preliminar en formato CSV.\n`;
+    csv += `Para obtener el informe completo en PDF, contacte con soporte.\n`;
+    
+    return csv;
   };
 
   const handleGenerateAnother = () => {

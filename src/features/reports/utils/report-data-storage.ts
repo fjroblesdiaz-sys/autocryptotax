@@ -22,6 +22,9 @@ export interface ReportGenerationSessionData {
   reportType?: ReportType;
   fiscalYear?: number;
   reportId?: string;
+  generatedReport?: GeneratedReport;
+  reportCSV?: string;
+  reportJSON?: string;
 }
 
 export const reportDataStorage = {

@@ -24,15 +24,22 @@ export const ReportConfigContainer = () => {
       return;
     }
     
+    // Clear any previously saved reportType to ensure fresh selection
+    const { reportType, fiscalYear, reportId, generatedReport, reportCSV, reportJSON, ...keepData } = storedData;
+    reportDataStorage.clear();
+    reportDataStorage.save(keepData);
+    
     setIsReady(true);
   }, [router]);
 
   const handleGenerate = (reportType: ReportType, year: number) => {
-    // Save report configuration
+    // Save report configuration (always use what user just selected)
     reportDataStorage.save({
       reportType,
       fiscalYear: year,
     });
+    
+    console.log('Saving report config:', { reportType, year }); // Debug log
     
     // Navigate to generation page
     router.push('/reports/generate');

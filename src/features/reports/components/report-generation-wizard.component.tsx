@@ -20,22 +20,25 @@ interface ReportGenerationWizardProps {
 
 const reportTypes = [
   {
-    id: 'model-720' as ReportType,
-    title: 'Modelo 720',
-    description: 'Declaración de bienes y derechos en el extranjero',
-    details: 'Obligatorio si el valor de tus criptomonedas supera los 50.000€',
-  },
-  {
     id: 'model-100' as ReportType,
     title: 'Modelo 100',
     description: 'IRPF - Ganancias y pérdidas de capital',
     details: 'Para declarar las ganancias o pérdidas derivadas de la compra/venta de criptomonedas',
+    available: true,
+  },
+  {
+    id: 'model-720' as ReportType,
+    title: 'Modelo 720',
+    description: 'Declaración de bienes y derechos en el extranjero',
+    details: 'Obligatorio si el valor de tus criptomonedas supera los 50.000€',
+    available: false,
   },
   {
     id: 'model-714' as ReportType,
     title: 'Modelo 714',
     description: 'Impuesto sobre el Patrimonio',
     details: 'Declaración del patrimonio total incluyendo criptomonedas',
+    available: false,
   },
 ];
 
@@ -142,22 +145,27 @@ export const ReportGenerationWizard = ({
                 {reportTypes.map((report) => (
                   <div
                     key={report.id}
-                    className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                      selectedReportType === report.id
-                        ? 'border-primary bg-primary/5'
-                        : 'border-border hover:border-primary/50'
+                    className={`p-4 border-2 rounded-lg transition-all ${
+                      !report.available
+                        ? 'opacity-50 cursor-not-allowed bg-muted'
+                        : selectedReportType === report.id
+                        ? 'border-primary bg-primary/5 cursor-pointer'
+                        : 'border-border hover:border-primary/50 cursor-pointer'
                     }`}
-                    onClick={() => setSelectedReportType(report.id)}
+                    onClick={() => report.available && setSelectedReportType(report.id)}
                   >
                     <div className="flex items-start gap-3">
-                      <div className="p-2 bg-primary/10 rounded-lg">
-                        <FileText className="h-5 w-5 text-primary" />
+                      <div className={`p-2 rounded-lg ${report.available ? 'bg-primary/10' : 'bg-muted'}`}>
+                        <FileText className={`h-5 w-5 ${report.available ? 'text-primary' : 'text-muted-foreground'}`} />
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
                           <h4 className="font-semibold">{report.title}</h4>
                           {report.id === 'model-100' && (
                             <Badge variant="secondary">Más común</Badge>
+                          )}
+                          {!report.available && (
+                            <Badge variant="outline">Próximamente</Badge>
                           )}
                         </div>
                         <p className="text-sm text-muted-foreground mb-2">
@@ -167,7 +175,7 @@ export const ReportGenerationWizard = ({
                           {report.details}
                         </p>
                       </div>
-                      {selectedReportType === report.id && (
+                      {selectedReportType === report.id && report.available && (
                         <CheckCircle2 className="h-5 w-5 text-primary" />
                       )}
                     </div>

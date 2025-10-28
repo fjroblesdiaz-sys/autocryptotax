@@ -4,25 +4,45 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { ReportGenerationWizard } from '@/features/reports/components/report-generation-wizard.component';
 import { reportDataStorage } from '@/features/reports/utils/report-data-storage';
-import { GeneratedReport } from '@/features/reports/types/reports.types';
+import { GeneratedReport, WalletData } from '@/features/reports/types/reports.types';
+import { useReportApi } from '@/features/reports/hooks/use-report-api.hook';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AlertCircle } from 'lucide-react';
 
 /**
  * Report Generation Container
- * Shows progress while generating the report
+ * Shows progress while generating the report using the real API
  */
 export const ReportGenerationContainer = () => {
   const router = useRouter();
-  const [isGenerating, setIsGenerating] = useState(false);
+  const { generateReport, isLoading, error } = useReportApi();
   const [progress, setProgress] = useState(0);
   const [isReady, setIsReady] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     // Validate that we have all required data
     const storedData = reportDataStorage.get();
     
+    console.log('Report generation - stored data:', storedData); // Debug log
+    
     if (!storedData.dataSource || !storedData.sourceData || !storedData.reportType || !storedData.fiscalYear) {
       // Missing required data, redirect back to start
+      console.error('Missing required data:', storedData);
       router.push('/reports');
+      return;
+    }
+    
+    // Validate report type is supported
+    if (storedData.reportType !== 'model-100') {
+      setErrorMessage(`El modelo ${storedData.reportType} aún no está implementado. Por favor, selecciona Modelo 100 (IRPF).`);
+      setIsReady(true);
+      return;
+    }
+    
+    // Only support wallet source for now
+    if (storedData.dataSource !== 'wallet') {
+      setErrorMessage('Solo se soporta la generación de informes desde cartera conectada en este momento');
       return;
     }
     
@@ -34,70 +54,90 @@ export const ReportGenerationContainer = () => {
   }, [router]);
 
   const startGeneration = async (storedData: ReturnType<typeof reportDataStorage.get>) => {
-    setIsGenerating(true);
     setProgress(0);
+    setErrorMessage(null);
 
     try {
-      // Simulate report generation with progress updates
-      // In a real implementation, this would call your backend API
-      
-      // Progress: Collecting transactions
-      await new Promise(resolve => setTimeout(resolve, 500));
-      setProgress(25);
+      const walletData = storedData.sourceData as WalletData;
 
-      // Progress: Fetching historical prices
-      await new Promise(resolve => setTimeout(resolve, 800));
-      setProgress(50);
+      // Simulate progress updates
+      const progressInterval = setInterval(() => {
+        setProgress(prev => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return 90;
+          }
+          return prev + 10;
+        });
+      }, 500);
 
-      // Progress: Calculating gains/losses
-      await new Promise(resolve => setTimeout(resolve, 700));
-      setProgress(75);
+      // Call the real API (request both CSV and prepare for PDF)
+      const result = await generateReport({
+        walletAddress: walletData.address,
+        chain: walletData.chain || 'ethereum',
+        fiscalYear: storedData.fiscalYear!,
+        reportType: storedData.reportType!,
+        dateRange: walletData.dateRange,
+        format: 'csv', // Get CSV for display/download
+      });
 
-      // Progress: Generating PDF
-      await new Promise(resolve => setTimeout(resolve, 600));
-      setProgress(90);
+      clearInterval(progressInterval);
 
-      // Final step
-      await new Promise(resolve => setTimeout(resolve, 400));
+      if (!result) {
+        throw new Error(error || 'Error desconocido al generar el informe');
+      }
+
       setProgress(100);
 
-      // Create mock generated report
-      const mockReport: GeneratedReport = {
-        id: `report-${Date.now()}`,
+      // Create generated report object
+      const generatedReport: GeneratedReport = {
+        id: result.reportId,
         reportType: storedData.reportType!,
         fiscalYear: storedData.fiscalYear!,
-        generatedAt: new Date(),
+        generatedAt: new Date(result.summary.generatedAt),
         status: 'completed',
         dataSource: storedData.dataSource!,
-        downloadUrl: '/api/reports/download/mock-report.pdf',
+        downloadUrl: result.downloadUrl,
         summary: {
-          totalTransactions: Math.floor(Math.random() * 200) + 50,
-          totalGains: Math.random() * 10000,
-          totalLosses: Math.random() * 5000,
-          netResult: Math.random() * 5000,
+          totalTransactions: result.summary.totalTransactions,
+          totalGains: result.summary.totalGains,
+          totalLosses: result.summary.totalLosses,
+          netResult: result.summary.netResult,
         },
       };
 
-      // Save report ID to session storage
-      reportDataStorage.save({ reportId: mockReport.id });
+      // Save report ID, full report data, and CSV if available
+      reportDataStorage.save({ 
+        reportId: generatedReport.id,
+        generatedReport,
+        reportCSV: result.csv, // Store CSV data for download
+      });
+
+      // Small delay to show 100% completion
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       // Navigate to completion page
-      router.push(`/reports/complete?id=${mockReport.id}`);
+      router.push(`/reports/complete?id=${generatedReport.id}`);
     } catch (err) {
       console.error('Error generating report:', err);
-      // On error, go back to configuration
-      router.push('/reports/configure');
+      setErrorMessage(err instanceof Error ? err.message : 'Error desconocido');
+      setProgress(0);
     }
   };
 
   const handleBack = () => {
     // Can't go back while generating
-    if (!isGenerating) {
+    if (!isLoading) {
       router.push('/reports/configure');
     }
   };
 
-  if (!isReady) {
+  const handleRetry = () => {
+    // Go back to config page to reselect report type
+    router.push('/reports/configure');
+  };
+
+  if (!isReady && !errorMessage) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="text-center">
@@ -118,11 +158,21 @@ export const ReportGenerationContainer = () => {
           </p>
         </div>
 
+        {/* Error Display */}
+        {(errorMessage || error) && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              {errorMessage || error}
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Generation Progress */}
         <ReportGenerationWizard
-          onGenerate={() => {}} // Not used in this page
+          onGenerate={handleRetry}
           onBack={handleBack}
-          isGenerating={isGenerating}
+          isGenerating={isLoading}
           generationProgress={progress}
         />
       </div>
