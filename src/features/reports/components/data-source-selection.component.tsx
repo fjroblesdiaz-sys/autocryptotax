@@ -17,6 +17,7 @@ const dataSources = [
     description: 'Genera reportes desde tu cartera conectada a través de thirdweb',
     icon: Wallet,
     badge: 'Recomendado',
+    disabled: false,
   },
   {
     type: 'api-key' as DataSourceType,
@@ -24,13 +25,15 @@ const dataSources = [
     description: 'Conecta mediante API key para obtener transacciones automáticamente',
     icon: Key,
     badge: 'Automático',
+    disabled: false,
   },
   {
     type: 'csv' as DataSourceType,
     label: 'Archivo CSV',
     description: 'Sube archivos CSV exportados de Binance, Coinbase u otros exchanges',
     icon: FileSpreadsheet,
-    badge: 'Popular',
+    badge: 'Próximamente',
+    disabled: true,
   },
 
   {
@@ -38,14 +41,16 @@ const dataSources = [
     label: 'Autorización OAuth',
     description: 'Autoriza el acceso seguro a la API del exchange mediante OAuth',
     icon: ShieldCheck,
-    badge: 'Seguro',
+    badge: 'Próximamente',
+    disabled: true,
   },
   {
     type: 'manual' as DataSourceType,
     label: 'Entrada Manual',
     description: 'Ingresa manualmente tus transacciones de criptomonedas',
     icon: Edit,
-    badge: null,
+    badge: 'Próximamente',
+    disabled: true,
   },
 ];
 
@@ -63,25 +68,39 @@ export const DataSourceSelection = ({ onSelect, selectedSource }: DataSourceSele
         {dataSources.map((source) => {
           const Icon = source.icon;
           const isSelected = selectedSource === source.type;
+          const isDisabled = source.disabled;
 
           return (
             <Card
               key={source.type}
-              className={`cursor-pointer transition-all hover:shadow-lg ${
-                isSelected ? 'ring-2 ring-primary' : ''
-              }`}
-              onClick={() => onSelect(source.type)}
+              className={`transition-all ${
+                isDisabled 
+                  ? 'opacity-60 cursor-not-allowed' 
+                  : 'cursor-pointer hover:shadow-lg'
+              } ${isSelected ? 'ring-2 ring-primary' : ''}`}
+              onClick={() => !isDisabled && onSelect(source.type)}
             >
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="p-2 bg-primary/10 rounded-lg">
-                      <Icon className="h-6 w-6 text-primary" />
+                    <div className={`p-2 rounded-lg ${
+                      isDisabled ? 'bg-muted' : 'bg-primary/10'
+                    }`}>
+                      <Icon className={`h-6 w-6 ${
+                        isDisabled ? 'text-muted-foreground' : 'text-primary'
+                      }`} />
                     </div>
                     <div>
-                      <CardTitle className="text-lg">{source.label}</CardTitle>
+                      <CardTitle className={`text-lg ${
+                        isDisabled ? 'text-muted-foreground' : ''
+                      }`}>
+                        {source.label}
+                      </CardTitle>
                       {source.badge && (
-                        <Badge variant="secondary" className="mt-1">
+                        <Badge 
+                          variant={isDisabled ? 'outline' : 'secondary'} 
+                          className="mt-1"
+                        >
                           {source.badge}
                         </Badge>
                       )}

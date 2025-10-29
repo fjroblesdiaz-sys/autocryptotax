@@ -155,25 +155,38 @@ export async function POST(request: NextRequest) {
     // }
 
     // Step 1: Test API connection
-    console.log(`Testing connection to ${validated.exchange}...`);
-    const isValidConnection = await exchangeAPIService.testConnection(
-      validated.exchange,
-      {
-        apiKey: validated.apiKey,
-        apiSecret: validated.apiSecret,
-        passphrase: validated.passphrase,
-      }
-    );
+    console.log(`[API Route] Testing connection to ${validated.exchange}...`);
+    console.log(`[API Route] API Key (first 8): ${validated.apiKey.substring(0, 8)}...`);
+    
+    let isValidConnection = false;
+    let connectionError = null;
+    
+    try {
+      isValidConnection = await exchangeAPIService.testConnection(
+        validated.exchange,
+        {
+          apiKey: validated.apiKey,
+          apiSecret: validated.apiSecret,
+          passphrase: validated.passphrase,
+        }
+      );
+    } catch (err) {
+      connectionError = err instanceof Error ? err.message : 'Unknown error';
+      console.error(`[API Route] Connection test threw error:`, connectionError);
+    }
 
     if (!isValidConnection) {
       return NextResponse.json(
         {
           error: 'Invalid API credentials',
-          message: 'Failed to connect to exchange. Please verify your API key and secret.',
+          message: connectionError || 'Failed to connect to exchange. Please verify your API key and secret.',
+          details: 'Asegúrate de que tu API key tiene permisos de lectura y que tu IP está autorizada (o sin restricción de IP).',
         },
         { status: 401 }
       );
     }
+
+    console.log(`[API Route] Connection to ${validated.exchange} successful!`);
 
     // Step 2: Fetch transactions from exchange
     console.log(`Fetching transactions from ${validated.exchange}...`);

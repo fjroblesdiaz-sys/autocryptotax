@@ -46,6 +46,10 @@ export class BinanceStrategy {
     params: Record<string, any>,
     credentials: BinanceCredentials
   ): Promise<any> {
+    // Trim whitespace from credentials
+    const apiKey = credentials.apiKey.trim();
+    const apiSecret = credentials.apiSecret.trim();
+
     const timestamp = Date.now();
     const allParams: Record<string, any> = { ...params, timestamp, recvWindow: 60000 };
 
@@ -53,18 +57,36 @@ export class BinanceStrategy {
       .map(key => `${key}=${allParams[key]}`)
       .join('&');
 
-    const signature = this.createSignature(queryString, credentials.apiSecret);
+    const signature = this.createSignature(queryString, apiSecret);
     const url = `${this.baseUrl}${endpoint}?${queryString}&signature=${signature}`;
+
+    console.log('[Binance] Request URL:', `${this.baseUrl}${endpoint}`);
+    console.log('[Binance] Query params:', Object.keys(allParams).join(', '));
 
     const response = await fetch(url, {
       headers: {
-        'X-MBX-APIKEY': credentials.apiKey,
+        'X-MBX-APIKEY': apiKey,
       },
     });
 
+    console.log('[Binance] Response status:', response.status, response.statusText);
+
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(`Binance API Error: ${error.msg || error.message || response.statusText}`);
+      console.error('[Binance] API Error Response:', error);
+      
+      // Provide more specific error messages
+      if (error.code === -2015) {
+        throw new Error('API key inválida o incorrecta');
+      } else if (error.code === -1022) {
+        throw new Error('Firma inválida. Verifica tu API Secret');
+      } else if (error.code === -2014) {
+        throw new Error('API key no tiene permisos. Habilita "Enable Reading" en Binance');
+      } else if (error.code === -2008) {
+        throw new Error('Tu IP no está autorizada. Agrega tu IP en Binance o deshabilita la restricción');
+      }
+      
+      throw new Error(`Binance API Error (${error.code}): ${error.msg || error.message || response.statusText}`);
     }
 
     return response.json();
@@ -75,10 +97,19 @@ export class BinanceStrategy {
    */
   async testConnection(credentials: BinanceCredentials): Promise<boolean> {
     try {
+      console.log('[Binance] Testing connection...');
+      console.log('[Binance] API Key length:', credentials.apiKey?.length || 0);
+      console.log('[Binance] API Secret length:', credentials.apiSecret?.length || 0);
+      console.log('[Binance] API Key (first 8 chars):', credentials.apiKey?.substring(0, 8));
+      
       await this.makeRequest('/api/v3/account', {}, credentials);
+      console.log('[Binance] Connection test successful!');
       return true;
     } catch (error) {
-      console.error('Binance connection test failed:', error);
+      console.error('[Binance] Connection test failed:', error);
+      if (error instanceof Error) {
+        console.error('[Binance] Error message:', error.message);
+      }
       return false;
     }
   }
