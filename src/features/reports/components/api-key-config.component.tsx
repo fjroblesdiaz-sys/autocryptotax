@@ -6,14 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Eye, EyeOff, Calendar as CalendarIcon, Shield, AlertTriangle } from 'lucide-react';
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
+import { Eye, EyeOff, Shield, AlertTriangle } from 'lucide-react';
 import { ExchangePlatform, APIKeyData } from '../types/reports.types';
-import { cn } from '@/lib/utils';
 
 interface APIKeyConfigProps {
   onSubmit: (data: APIKeyData) => void;
@@ -27,8 +22,6 @@ export const APIKeyConfig = ({ onSubmit, onBack }: APIKeyConfigProps) => {
   const [passphrase, setPassphrase] = useState('');
   const [showSecret, setShowSecret] = useState(false);
   const [showPassphrase, setShowPassphrase] = useState(false);
-  const [dateFrom, setDateFrom] = useState<Date>();
-  const [dateTo, setDateTo] = useState<Date>();
 
   const requiresPassphrase = platform === 'coinbase';
 
@@ -41,12 +34,6 @@ export const APIKeyConfig = ({ onSubmit, onBack }: APIKeyConfigProps) => {
       apiKey,
       apiSecret,
       ...(requiresPassphrase && { passphrase }),
-      ...(dateFrom && dateTo && {
-        dateRange: {
-          from: dateFrom,
-          to: dateTo,
-        },
-      }),
     };
 
     onSubmit(data);
@@ -170,66 +157,12 @@ export const APIKeyConfig = ({ onSubmit, onBack }: APIKeyConfigProps) => {
             </div>
           )}
 
-          {/* Date Range (Optional) */}
-          <div className="space-y-2">
-            <Label>Rango de Fechas (Opcional)</Label>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="date-from" className="text-sm text-muted-foreground mb-2 block">
-                  Desde
-                </Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        'w-full justify-start text-left font-normal',
-                        !dateFrom && 'text-muted-foreground'
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {dateFrom ? format(dateFrom, 'PPP', { locale: es }) : 'Seleccionar fecha'}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <Calendar
-                      mode="single"
-                      selected={dateFrom}
-                      onSelect={setDateFrom}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-              <div>
-                <Label htmlFor="date-to" className="text-sm text-muted-foreground mb-2 block">
-                  Hasta
-                </Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        'w-full justify-start text-left font-normal',
-                        !dateTo && 'text-muted-foreground'
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {dateTo ? format(dateTo, 'PPP', { locale: es }) : 'Seleccionar fecha'}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <Calendar
-                      mode="single"
-                      selected={dateTo}
-                      onSelect={setDateTo}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-            </div>
-          </div>
+          {/* Info about fiscal year */}
+          <Alert>
+            <AlertDescription>
+              Las transacciones se filtrarán automáticamente según el año fiscal seleccionado en el paso anterior.
+            </AlertDescription>
+          </Alert>
 
           {/* Submit Button */}
           <div className="flex justify-end gap-2 pt-4">

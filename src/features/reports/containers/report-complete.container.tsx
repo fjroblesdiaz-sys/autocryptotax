@@ -23,7 +23,8 @@ export const ReportCompleteContainer = ({ reportId }: ReportCompleteContainerPro
   const [report, setReport] = useState<GeneratedReport | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [validationDone, setValidationDone] = useState(false);
-  const [isDownloading, setIsDownloading] = useState(false);
+  const [isDownloadingPDF, setIsDownloadingPDF] = useState(false);
+  const [isDownloadingCSV, setIsDownloadingCSV] = useState(false);
 
   useEffect(() => {
     console.log('[ReportComplete] reportId from URL:', reportId);
@@ -93,16 +94,15 @@ export const ReportCompleteContainer = ({ reportId }: ReportCompleteContainerPro
     return () => clearTimeout(timeoutId);
   }, [reportId, generatedReport, reportCSV, dataSource, reportType, fiscalYear, router]);
 
-  const handleDownload = async () => {
-    if (!report || isDownloading) return;
+  const handleDownloadCSV = async () => {
+    if (!report || isDownloadingCSV) return;
 
-    setIsDownloading(true);
-    console.log('[ReportComplete] Starting download...');
+    setIsDownloadingCSV(true);
+    console.log('[ReportComplete] Starting CSV download...');
     console.log('[ReportComplete] reportCSV available:', !!reportCSV);
     console.log('[ReportComplete] reportCSV length:', reportCSV?.length || 0);
     
     try {
-      // Download CSV first (always works, no API call needed)
       if (reportCSV) {
         console.log('[ReportComplete] Downloading CSV from context...');
         const blob = new Blob([reportCSV], { type: 'text/csv;charset=utf-8;' });
@@ -115,9 +115,6 @@ export const ReportCompleteContainer = ({ reportId }: ReportCompleteContainerPro
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
         console.log('[ReportComplete] CSV downloaded successfully');
-        
-        // Small delay between downloads
-        await new Promise(resolve => setTimeout(resolve, 500));
       } else if (generatedReport) {
         console.log('[ReportComplete] Generating and downloading CSV fallback...');
         const csvContent = generateCSVReport(generatedReport);
@@ -131,23 +128,32 @@ export const ReportCompleteContainer = ({ reportId }: ReportCompleteContainerPro
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
         console.log('[ReportComplete] CSV fallback downloaded successfully');
-        
-        // Small delay between downloads
-        await new Promise(resolve => setTimeout(resolve, 500));
       } else {
         console.warn('[ReportComplete] No CSV data available');
+        alert('No hay datos CSV disponibles. Por favor, genera el informe nuevamente.');
       }
-      
-      // Download PDF from API (this takes longer)
-      console.log('[ReportComplete] Starting PDF download...');
+    } catch (error) {
+      console.error('[ReportComplete] Error downloading CSV:', error);
+      alert('Error al descargar el CSV. Por favor, inténtalo de nuevo.');
+    } finally {
+      setIsDownloadingCSV(false);
+    }
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!report || isDownloadingPDF) return;
+
+    setIsDownloadingPDF(true);
+    console.log('[ReportComplete] Starting PDF download...');
+    
+    try {
       await downloadPDF();
       console.log('[ReportComplete] PDF downloaded successfully');
-      
     } catch (error) {
-      console.error('[ReportComplete] Error downloading report:', error);
-      alert('Error al descargar el informe. Por favor, inténtalo de nuevo.');
+      console.error('[ReportComplete] Error downloading PDF:', error);
+      alert('Error al descargar el PDF. Por favor, inténtalo de nuevo.');
     } finally {
-      setIsDownloading(false);
+      setIsDownloadingPDF(false);
     }
   };
 
@@ -338,9 +344,11 @@ export const ReportCompleteContainer = ({ reportId }: ReportCompleteContainerPro
         {/* Report Complete Component */}
       <ReportComplete
         report={report}
-        onDownload={handleDownload}
+        onDownloadPDF={handleDownloadPDF}
+        onDownloadCSV={handleDownloadCSV}
         onGenerateAnother={handleGenerateAnother}
-        isDownloading={isDownloading}
+        isDownloadingPDF={isDownloadingPDF}
+        isDownloadingCSV={isDownloadingCSV}
       />
       </div>
     </div>

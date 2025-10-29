@@ -3,16 +3,18 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle2, Download, FileText, TrendingUp, TrendingDown, Receipt, Loader2 } from 'lucide-react';
+import { CheckCircle2, Download, FileText, TrendingUp, TrendingDown, Receipt, Loader2, FileSpreadsheet } from 'lucide-react';
 import { GeneratedReport } from '../types/reports.types';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 interface ReportCompleteProps {
   report: GeneratedReport;
-  onDownload: () => void;
+  onDownloadPDF: () => void;
+  onDownloadCSV: () => void;
   onGenerateAnother: () => void;
-  isDownloading?: boolean;
+  isDownloadingPDF?: boolean;
+  isDownloadingCSV?: boolean;
 }
 
 const reportTypeLabels = {
@@ -29,9 +31,17 @@ const dataSourceLabels = {
   manual: 'Entrada Manual',
 };
 
-export const ReportComplete = ({ report, onDownload, onGenerateAnother, isDownloading = false }: ReportCompleteProps) => {
+export const ReportComplete = ({ 
+  report, 
+  onDownloadPDF, 
+  onDownloadCSV, 
+  onGenerateAnother, 
+  isDownloadingPDF = false,
+  isDownloadingCSV = false 
+}: ReportCompleteProps) => {
   const netResult = report.summary ? report.summary.netResult : 0;
   const isProfit = netResult >= 0;
+  const isAnyDownloading = isDownloadingPDF || isDownloadingCSV;
 
   return (
     <div className="space-y-6">
@@ -116,20 +126,47 @@ export const ReportComplete = ({ report, onDownload, onGenerateAnother, isDownlo
             <Badge variant="outline">{dataSourceLabels[report.dataSource]}</Badge>
           </div>
 
-          {/* Download Button */}
-          <Button onClick={onDownload} size="lg" className="w-full" disabled={isDownloading}>
-            {isDownloading ? (
-              <>
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                Descargando...
-              </>
-            ) : (
-              <>
-                <Download className="mr-2 h-5 w-5" />
-                Descargar Reporte Completo
-              </>
-            )}
-          </Button>
+          {/* Download Buttons */}
+          <div className="grid grid-cols-2 gap-3">
+            <Button 
+              onClick={onDownloadPDF} 
+              size="lg" 
+              className="w-full" 
+              disabled={isAnyDownloading}
+              variant="default"
+            >
+              {isDownloadingPDF ? (
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  Descargando...
+                </>
+              ) : (
+                <>
+                  <FileText className="mr-2 h-5 w-5" />
+                  PDF
+                </>
+              )}
+            </Button>
+            <Button 
+              onClick={onDownloadCSV} 
+              size="lg" 
+              className="w-full" 
+              disabled={isAnyDownloading}
+              variant="outline"
+            >
+              {isDownloadingCSV ? (
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  Descargando...
+                </>
+              ) : (
+                <>
+                  <FileSpreadsheet className="mr-2 h-5 w-5" />
+                  CSV
+                </>
+              )}
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
@@ -216,20 +253,47 @@ export const ReportComplete = ({ report, onDownload, onGenerateAnother, isDownlo
       </Card>
 
       {/* Action Buttons */}
-      <div className="flex gap-3">
-        <Button variant="outline" onClick={onGenerateAnother} className="flex-1" disabled={isDownloading}>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <Button 
+          variant="outline" 
+          onClick={onGenerateAnother} 
+          disabled={isAnyDownloading}
+          className="w-full"
+        >
           Generar Otro Reporte
         </Button>
-        <Button onClick={onDownload} className="flex-1" disabled={isDownloading}>
-          {isDownloading ? (
+        <Button 
+          onClick={onDownloadPDF} 
+          disabled={isAnyDownloading}
+          className="w-full"
+        >
+          {isDownloadingPDF ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Descargando...
+              Descargando PDF...
             </>
           ) : (
             <>
-              <Download className="mr-2 h-4 w-4" />
-              Descargar Reporte
+              <FileText className="mr-2 h-4 w-4" />
+              Descargar PDF
+            </>
+          )}
+        </Button>
+        <Button 
+          onClick={onDownloadCSV} 
+          disabled={isAnyDownloading}
+          variant="outline"
+          className="w-full"
+        >
+          {isDownloadingCSV ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Descargando CSV...
+            </>
+          ) : (
+            <>
+              <FileSpreadsheet className="mr-2 h-4 w-4" />
+              Descargar CSV
             </>
           )}
         </Button>
