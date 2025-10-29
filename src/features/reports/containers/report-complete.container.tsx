@@ -7,6 +7,7 @@ import { GeneratedReport, WalletData, APIKeyData } from '@/features/reports/type
 import { useReportData } from '@/features/reports/context/report-data.context';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { getReportFromCache } from '@/lib/cache-manager';
 
 interface ReportCompleteContainerProps {
   reportId: string | null;
@@ -64,24 +65,20 @@ export const ReportCompleteContainer = ({ reportId }: ReportCompleteContainerPro
 
     // If not in context, try to load from localStorage
     console.log('[ReportComplete] No generatedReport in context, checking localStorage...');
-    try {
-      const stored = localStorage.getItem(`report_${reportId}`);
-      if (stored) {
-        const data = JSON.parse(stored);
-        console.log('[ReportComplete] Report loaded from localStorage');
-        setReport(data.report);
-        
-        // Restore CSV to context if available
-        if (data.csv) {
-          console.log('[ReportComplete] Restoring CSV from localStorage');
-          setReportCSV(data.csv);
-        }
-        
-        setIsReady(true);
-        return;
+    const cachedData = getReportFromCache(reportId);
+    
+    if (cachedData) {
+      console.log('[ReportComplete] Report loaded from cache');
+      setReport(cachedData.report);
+      
+      // Restore CSV to context if available
+      if (cachedData.csv) {
+        console.log('[ReportComplete] Restoring CSV from cache');
+        setReportCSV(cachedData.csv);
       }
-    } catch (e) {
-      console.error('[ReportComplete] Failed to load from localStorage:', e);
+      
+      setIsReady(true);
+      return;
     }
 
     // If still no report after a delay, redirect

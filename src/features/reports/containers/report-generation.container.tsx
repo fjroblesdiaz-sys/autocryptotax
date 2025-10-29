@@ -9,6 +9,7 @@ import { useReportApi } from '@/features/reports/hooks/use-report-api.hook';
 import { useExchangeApi } from '@/features/reports/hooks/use-exchange-api.hook';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
+import { saveReportToCache } from '@/lib/cache-manager';
 
 /**
  * Report Generation Container
@@ -165,14 +166,13 @@ export const ReportGenerationContainer = () => {
 
       // Save to localStorage as backup to prevent data loss on navigation
       try {
-        localStorage.setItem(`report_${generatedReport.id}`, JSON.stringify({
+        saveReportToCache(generatedReport.id, {
           report: generatedReport,
           csv: result.csv,
           dataSource,
           reportType,
           fiscalYear,
-        }));
-        console.log('[ReportGeneration] Report saved to localStorage as backup');
+        });
       } catch (e) {
         console.error('[ReportGeneration] Failed to save to localStorage:', e);
       }
