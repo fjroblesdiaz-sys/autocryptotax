@@ -202,13 +202,31 @@ export async function POST(request: NextRequest) {
 
     // Step 3: Convert to standard format
     const processedTransactions = convertExchangeTransactions(exchangeTransactions);
+    
+    console.log(`[Exchange API] Converted ${processedTransactions.length} transactions:`);
+    processedTransactions.slice(0, 5).forEach((tx, i) => {
+      console.log(`  [${i}] ${tx.date.toISOString()} - ${tx.type} ${tx.amount} ${tx.asset} @ €${tx.priceEUR}`);
+    });
+    if (processedTransactions.length > 5) {
+      console.log(`  ... and ${processedTransactions.length - 5} more`);
+    }
 
     // Step 4: Calculate taxes using FIFO method
-    console.log(`Calculating taxes for fiscal year ${validated.fiscalYear}`);
+    console.log(`[Exchange API] Calculating taxes for fiscal year ${validated.fiscalYear}`);
+    console.log(`[Exchange API] Fiscal year range: ${validated.fiscalYear}-01-01 to ${validated.fiscalYear}-12-31`);
+    
     const taxCalculation = calculateTaxFIFO(
       processedTransactions,
       validated.fiscalYear
     );
+    
+    console.log(`[Exchange API] Tax calculation complete:`, {
+      totalTransactions: taxCalculation.transactions.length,
+      totalGains: taxCalculation.summary.totalGains,
+      totalLosses: taxCalculation.summary.totalLosses,
+      netResult: taxCalculation.summary.netResult,
+      capitalGains: taxCalculation.capitalGains.length,
+    });
 
     // Step 5: Generate report in requested format
     let report;

@@ -40,7 +40,7 @@ export const useReportGeneration = (): UseReportGenerationReturn => {
   const [selectedDataSource, setSelectedDataSource] = useState<DataSourceType | null>(null);
   const [collectedData, setCollectedData] = useState<WalletData | CSVUploadData | APIKeyData | OAuthData | ManualEntryTransaction[] | null>(null);
   const [selectedReportType, setSelectedReportType] = useState<ReportType | null>(null);
-  const [fiscalYear, setFiscalYear] = useState<number>(new Date().getFullYear() - 1);
+  const [fiscalYear, setFiscalYear] = useState<number>(2025);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationProgress, setGenerationProgress] = useState(0);
   const [generatedReport, setGeneratedReport] = useState<GeneratedReport | null>(null);

@@ -22,8 +22,15 @@ export const ReportGenerationContainer = () => {
   const [progress, setProgress] = useState(0);
   const [isReady, setIsReady] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [hasStartedGeneration, setHasStartedGeneration] = useState(false);
+  const [validationChecked, setValidationChecked] = useState(false);
 
   useEffect(() => {
+    // Only validate once to prevent redirect loops
+    if (validationChecked) {
+      return;
+    }
+
     // Validate that we have all required data
     console.log('[ReportGeneration] Context data:', { dataSource, hasSourceData: !!sourceData, reportType, fiscalYear });
     
@@ -38,6 +45,7 @@ export const ReportGenerationContainer = () => {
     if (reportType !== 'model-100') {
       setErrorMessage(`El modelo ${reportType} aún no está implementado. Por favor, selecciona Modelo 100 (IRPF).`);
       setIsReady(true);
+      setValidationChecked(true);
       return;
     }
     
@@ -45,15 +53,20 @@ export const ReportGenerationContainer = () => {
     if (dataSource !== 'wallet' && dataSource !== 'api-key') {
       setErrorMessage(`El origen de datos ${dataSource} no está implementado aún`);
       setIsReady(true);
+      setValidationChecked(true);
       return;
     }
     
     setIsReady(true);
+    setValidationChecked(true);
     
-    // Start generation automatically
-    startGeneration();
+    // Start generation automatically only once
+    if (!hasStartedGeneration) {
+      setHasStartedGeneration(true);
+      startGeneration();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dataSource, sourceData, reportType, fiscalYear, router]);
+  }, []);
 
   const startGeneration = async () => {
     if (!dataSource || !sourceData || !reportType || !fiscalYear) {
@@ -106,7 +119,21 @@ export const ReportGenerationContainer = () => {
       console.log('[ReportGeneration] API result:', result);
 
       if (!result) {
-        throw new Error(error || exchangeError || 'Error desconocido al generar el informe');
+        const errorMsg = error || exchangeError || 'Error desconocido al generar el informe';
+        console.error('[ReportGeneration] Result is null/undefined. Error:', errorMsg);
+        throw new Error(errorMsg);
+      }
+
+      // Check if the API returned an error in the response
+      if (result.error) {
+        console.error('[ReportGeneration] API returned error:', result.error);
+        throw new Error(result.error);
+      }
+
+      // Verify we have the minimum required data
+      if (!result.reportId && !result.summary) {
+        console.error('[ReportGeneration] Invalid API response format:', result);
+        throw new Error('Respuesta inválida del servidor. Por favor, inténtalo de nuevo.');
       }
 
       setProgress(100);
@@ -136,16 +163,32 @@ export const ReportGenerationContainer = () => {
         setReportCSV(result.csv);
       }
 
-      // Small delay to show 100% completion
+      // Save to localStorage as backup to prevent data loss on navigation
+      try {
+        localStorage.setItem(`report_${generatedReport.id}`, JSON.stringify({
+          report: generatedReport,
+          csv: result.csv,
+          dataSource,
+          reportType,
+          fiscalYear,
+        }));
+        console.log('[ReportGeneration] Report saved to localStorage as backup');
+      } catch (e) {
+        console.error('[ReportGeneration] Failed to save to localStorage:', e);
+      }
+
+      // Small delay to show 100% completion and ensure context is saved
       await new Promise(resolve => setTimeout(resolve, 500));
 
       // Navigate to completion page with reportId as query param
       console.log('[ReportGeneration] Navigating to complete page...');
       router.push(`/reports/complete?id=${generatedReport.id}`);
     } catch (err) {
-      console.error('Error generating report:', err);
-      setErrorMessage(err instanceof Error ? err.message : 'Error desconocido');
+      console.error('[ReportGeneration] Error during report generation:', err);
+      const errorMsg = err instanceof Error ? err.message : 'Error desconocido al generar el informe';
+      setErrorMessage(errorMsg);
       setProgress(0);
+      // Don't redirect on error, let user see the error message and retry
     }
   };
 

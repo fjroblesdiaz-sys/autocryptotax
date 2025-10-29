@@ -82,6 +82,13 @@ export const useExchangeApi = (): UseExchangeApiResult => {
           : undefined,
       };
 
+      console.log('[ExchangeAPI] Sending request to generate report:', {
+        exchange: data.platform,
+        fiscalYear,
+        reportType,
+        format,
+      });
+
       const response = await fetch('/api/reports/generate-from-exchange', {
         method: 'POST',
         headers: {
@@ -90,29 +97,49 @@ export const useExchangeApi = (): UseExchangeApiResult => {
         body: JSON.stringify(requestBody),
       });
 
+      console.log('[ExchangeAPI] Response status:', response.status, response.statusText);
+
       // Handle PDF response
       if (format === 'pdf') {
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to generate PDF');
+          let errorMessage = 'Failed to generate PDF';
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.error || errorData.message || errorMessage;
+          } catch (e) {
+            console.error('[ExchangeAPI] Could not parse error response:', e);
+          }
+          throw new Error(errorMessage);
         }
         return await response.blob();
       }
 
       // Handle JSON/CSV response
-      const result = await response.json();
+      let result;
+      try {
+        result = await response.json();
+        console.log('[ExchangeAPI] Response data:', result);
+      } catch (e) {
+        console.error('[ExchangeAPI] Failed to parse JSON response:', e);
+        throw new Error('Respuesta inválida del servidor. Por favor, inténtalo de nuevo.');
+      }
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to generate report');
+        const errorMessage = result.error || result.message || `HTTP ${response.status}: ${response.statusText}`;
+        console.error('[ExchangeAPI] API error:', errorMessage);
+        throw new Error(errorMessage);
       }
 
       if (!result.success) {
-        throw new Error(result.error || 'Report generation failed');
+        const errorMessage = result.error || result.message || 'Report generation failed';
+        console.error('[ExchangeAPI] Report generation failed:', errorMessage);
+        throw new Error(errorMessage);
       }
 
       return result;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unknown error';
+      const message = err instanceof Error ? err.message : 'Error desconocido al generar el informe';
+      console.error('[ExchangeAPI] Error in generateReport:', err);
       setError(message);
       throw new Error(message);
     } finally {

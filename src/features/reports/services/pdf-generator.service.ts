@@ -334,7 +334,7 @@ function drawCapitalGainsDetail(
 
   // Table headers
   const headers = ['Fecha Adq.', 'Fecha Venta', 'Activo', 'Adquisicion', 'Venta', 'Ganancia'];
-  const colWidths = [70, 70, 60, 80, 80, 85];
+  const colWidths = [70, 70, 70, 75, 75, 85];
   let xPos = 50;
 
   headers.forEach((header, i) => {
@@ -369,7 +369,7 @@ function drawCapitalGainsDetail(
     const rowData = [
       gain.acquisitionDate.substring(0, 10),
       gain.disposalDate.substring(0, 10),
-      gain.description.substring(0, 8),
+      gain.description.substring(0, 12),
       `EUR${gain.acquisitionValue.toFixed(2)}`,
       `EUR${gain.disposalValue.toFixed(2)}`,
       `EUR${gain.gain.toFixed(2)}`,

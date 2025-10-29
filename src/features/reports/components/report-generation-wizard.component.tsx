@@ -49,7 +49,7 @@ export const ReportGenerationWizard = ({
   generationProgress = 0,
 }: ReportGenerationWizardProps) => {
   const [selectedReportType, setSelectedReportType] = useState<ReportType>('model-100');
-  const [fiscalYear, setFiscalYear] = useState<number>(new Date().getFullYear() - 1);
+  const [fiscalYear, setFiscalYear] = useState<number>(2025);
 
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 10 }, (_, i) => currentYear - i);

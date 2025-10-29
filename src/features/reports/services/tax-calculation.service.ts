@@ -101,7 +101,7 @@ export function calculateTaxFIFO(
       case 'sell':
       case 'transfer_out':
         // Remove from holdings and calculate gains
-        const gains = queue.remove(tx.amount, tx.date, tx.priceEUR);
+        const gains = queue.remove(tx.amount, tx.date, tx.priceEUR, tx.asset);
         
         // Only include gains in the fiscal year
         if (tx.date >= yearStart && tx.date <= yearEnd) {
@@ -112,7 +112,7 @@ export function calculateTaxFIFO(
       case 'swap':
         // Swap is considered a sale + purchase
         // First, sell the outgoing asset
-        const swapGains = queue.remove(tx.amount, tx.date, tx.priceEUR);
+        const swapGains = queue.remove(tx.amount, tx.date, tx.priceEUR, tx.asset);
         if (tx.date >= yearStart && tx.date <= yearEnd) {
           capitalGains.push(...swapGains);
         }
@@ -172,7 +172,7 @@ class FIFOQueue {
     this.lots.push(lot);
   }
 
-  remove(quantity: number, disposalDate: Date, disposalPrice: number): CapitalGain[] {
+  remove(quantity: number, disposalDate: Date, disposalPrice: number, asset: string): CapitalGain[] {
     const gains: CapitalGain[] = [];
     let remaining = quantity;
 
@@ -182,7 +182,7 @@ class FIFOQueue {
 
       const gain: CapitalGain = {
         date: disposalDate,
-        asset: '', // Will be set by caller
+        asset: asset,
         quantity: quantityToRemove,
         acquisitionDate: lot.date,
         acquisitionPrice: lot.pricePerUnit,
