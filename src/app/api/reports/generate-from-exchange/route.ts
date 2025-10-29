@@ -260,7 +260,10 @@ export async function POST(request: NextRequest) {
     );
     
     if (validated.format === 'csv') {
+      console.log('[API] Generating CSV with taxCalculation containing', taxCalculation.transactions.length, 'transactions');
       formattedOutput = formatModel100CSV(report, taxCalculation);
+      console.log('[API] CSV generated, length:', formattedOutput.length, 'chars');
+      console.log('[API] CSV preview (first 500 chars):', formattedOutput.substring(0, 500));
     } else if (validated.format === 'pdf') {
       // Generate PDF
       pdfBuffer = await generateModel100PDF(report, taxCalculation, {

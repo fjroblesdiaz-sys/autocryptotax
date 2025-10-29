@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle2, Download, FileText, TrendingUp, TrendingDown, Receipt } from 'lucide-react';
+import { CheckCircle2, Download, FileText, TrendingUp, TrendingDown, Receipt, Loader2 } from 'lucide-react';
 import { GeneratedReport } from '../types/reports.types';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -12,6 +12,7 @@ interface ReportCompleteProps {
   report: GeneratedReport;
   onDownload: () => void;
   onGenerateAnother: () => void;
+  isDownloading?: boolean;
 }
 
 const reportTypeLabels = {
@@ -28,7 +29,7 @@ const dataSourceLabels = {
   manual: 'Entrada Manual',
 };
 
-export const ReportComplete = ({ report, onDownload, onGenerateAnother }: ReportCompleteProps) => {
+export const ReportComplete = ({ report, onDownload, onGenerateAnother, isDownloading = false }: ReportCompleteProps) => {
   const netResult = report.summary ? report.summary.netResult : 0;
   const isProfit = netResult >= 0;
 
@@ -116,9 +117,18 @@ export const ReportComplete = ({ report, onDownload, onGenerateAnother }: Report
           </div>
 
           {/* Download Button */}
-          <Button onClick={onDownload} size="lg" className="w-full">
-            <Download className="mr-2 h-5 w-5" />
-            Descargar Reporte Completo
+          <Button onClick={onDownload} size="lg" className="w-full" disabled={isDownloading}>
+            {isDownloading ? (
+              <>
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                Descargando...
+              </>
+            ) : (
+              <>
+                <Download className="mr-2 h-5 w-5" />
+                Descargar Reporte Completo
+              </>
+            )}
           </Button>
         </CardContent>
       </Card>
@@ -207,12 +217,21 @@ export const ReportComplete = ({ report, onDownload, onGenerateAnother }: Report
 
       {/* Action Buttons */}
       <div className="flex gap-3">
-        <Button variant="outline" onClick={onGenerateAnother} className="flex-1">
+        <Button variant="outline" onClick={onGenerateAnother} className="flex-1" disabled={isDownloading}>
           Generar Otro Reporte
         </Button>
-        <Button onClick={onDownload} className="flex-1">
-          <Download className="mr-2 h-4 w-4" />
-          Descargar Reporte
+        <Button onClick={onDownload} className="flex-1" disabled={isDownloading}>
+          {isDownloading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Descargando...
+            </>
+          ) : (
+            <>
+              <Download className="mr-2 h-4 w-4" />
+              Descargar Reporte
+            </>
+          )}
         </Button>
       </div>
     </div>

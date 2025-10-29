@@ -7,7 +7,7 @@ import { GeneratedReport, WalletData, APIKeyData } from '@/features/reports/type
 import { useReportData } from '@/features/reports/context/report-data.context';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { getReportFromCache } from '@/lib/cache-manager';
+import { getReportFromCache, getPDFFromCache, savePDFToCache } from '@/lib/cache-manager';
 
 interface ReportCompleteContainerProps {
   reportId: string | null;
@@ -22,6 +22,8 @@ export const ReportCompleteContainer = ({ reportId }: ReportCompleteContainerPro
   const { generatedReport, reportCSV, dataSource, sourceData, reportType, fiscalYear, setReportCSV } = useReportData();
   const [report, setReport] = useState<GeneratedReport | null>(null);
   const [isReady, setIsReady] = useState(false);
+  const [validationDone, setValidationDone] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   useEffect(() => {
     console.log('[ReportComplete] reportId from URL:', reportId);
@@ -92,14 +94,17 @@ export const ReportCompleteContainer = ({ reportId }: ReportCompleteContainerPro
   }, [reportId, generatedReport, reportCSV, dataSource, reportType, fiscalYear, router]);
 
   const handleDownload = async () => {
-    if (!report) return;
+    if (!report || isDownloading) return;
 
+    setIsDownloading(true);
+    console.log('[ReportComplete] Starting download...');
+    console.log('[ReportComplete] reportCSV available:', !!reportCSV);
+    console.log('[ReportComplete] reportCSV length:', reportCSV?.length || 0);
+    
     try {
-      // Download PDF from API
-      await downloadPDF();
-      
-      // Also download CSV if available
+      // Download CSV first (always works, no API call needed)
       if (reportCSV) {
+        console.log('[ReportComplete] Downloading CSV from context...');
         const blob = new Blob([reportCSV], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
@@ -109,8 +114,12 @@ export const ReportCompleteContainer = ({ reportId }: ReportCompleteContainerPro
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
+        console.log('[ReportComplete] CSV downloaded successfully');
+        
+        // Small delay between downloads
+        await new Promise(resolve => setTimeout(resolve, 500));
       } else if (generatedReport) {
-        // Fallback: generate CSV from report data
+        console.log('[ReportComplete] Generating and downloading CSV fallback...');
         const csvContent = generateCSVReport(generatedReport);
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
@@ -121,14 +130,51 @@ export const ReportCompleteContainer = ({ reportId }: ReportCompleteContainerPro
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
+        console.log('[ReportComplete] CSV fallback downloaded successfully');
+        
+        // Small delay between downloads
+        await new Promise(resolve => setTimeout(resolve, 500));
+      } else {
+        console.warn('[ReportComplete] No CSV data available');
       }
+      
+      // Download PDF from API (this takes longer)
+      console.log('[ReportComplete] Starting PDF download...');
+      await downloadPDF();
+      console.log('[ReportComplete] PDF downloaded successfully');
+      
     } catch (error) {
-      console.error('Error downloading report:', error);
+      console.error('[ReportComplete] Error downloading report:', error);
       alert('Error al descargar el informe. Por favor, inténtalo de nuevo.');
+    } finally {
+      setIsDownloading(false);
     }
   };
 
   const downloadPDF = async () => {
+    if (!reportId) {
+      console.error('[ReportComplete] No reportId available');
+      return;
+    }
+
+    // Try to get cached PDF first for instant download
+    const cachedPDF = await getPDFFromCache(reportId);
+    if (cachedPDF) {
+      console.log('[ReportComplete] Using cached PDF (instant download)');
+      const url = URL.createObjectURL(cachedPDF);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `modelo-${report?.reportType || 'report'}-${report?.fiscalYear || '2025'}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      return;
+    }
+
+    // If not cached, generate it
+    console.log('[ReportComplete] PDF not cached, generating...');
+    
     // Try to get data from context or localStorage
     let pdfDataSource = dataSource;
     let pdfSourceData = sourceData;
@@ -137,18 +183,13 @@ export const ReportCompleteContainer = ({ reportId }: ReportCompleteContainerPro
 
     if (!pdfDataSource || !pdfSourceData || !pdfReportType || !pdfFiscalYear) {
       console.log('[ReportComplete] Missing context data, trying localStorage...');
-      try {
-        const stored = localStorage.getItem(`report_${reportId}`);
-        if (stored) {
-          const data = JSON.parse(stored);
-          pdfDataSource = data.dataSource;
-          pdfReportType = data.reportType;
-          pdfFiscalYear = data.fiscalYear;
-          // Note: sourceData is not stored in localStorage for security reasons
-          console.warn('[ReportComplete] Could not restore sourceData from localStorage');
-        }
-      } catch (e) {
-        console.error('[ReportComplete] Failed to load from localStorage:', e);
+      const cachedData = getReportFromCache(reportId);
+      if (cachedData) {
+        pdfDataSource = cachedData.dataSource;
+        pdfReportType = cachedData.reportType;
+        pdfFiscalYear = cachedData.fiscalYear;
+        // Note: sourceData is not stored in cache for security reasons
+        console.warn('[ReportComplete] Could not restore sourceData from cache');
       }
     }
 
@@ -214,6 +255,12 @@ export const ReportCompleteContainer = ({ reportId }: ReportCompleteContainerPro
 
       // Download the PDF
       const blob = await response.blob();
+      
+      // Cache the PDF for future downloads
+      if (reportId) {
+        await savePDFToCache(reportId, blob);
+      }
+      
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -230,8 +277,14 @@ export const ReportCompleteContainer = ({ reportId }: ReportCompleteContainerPro
 
   // Helper function to generate CSV from report
   const generateCSVReport = (report: GeneratedReport): string => {
+    console.log('[ReportComplete] generateCSVReport called');
+    console.log('[ReportComplete] reportCSV available:', !!reportCSV);
+    console.log('[ReportComplete] reportCSV length:', reportCSV?.length || 0);
+    console.log('[ReportComplete] reportCSV preview:', reportCSV?.substring(0, 300));
+    
     // Use stored CSV from context if available
     if (reportCSV) {
+      console.log('[ReportComplete] Using reportCSV from context');
       return reportCSV;
     }
     
@@ -283,11 +336,12 @@ export const ReportCompleteContainer = ({ reportId }: ReportCompleteContainerPro
         </div>
 
         {/* Report Complete Component */}
-        <ReportComplete
-          report={report}
-          onDownload={handleDownload}
-          onGenerateAnother={handleGenerateAnother}
-        />
+      <ReportComplete
+        report={report}
+        onDownload={handleDownload}
+        onGenerateAnother={handleGenerateAnother}
+        isDownloading={isDownloading}
+      />
       </div>
     </div>
   );

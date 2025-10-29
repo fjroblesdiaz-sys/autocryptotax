@@ -122,6 +122,33 @@ export class BinanceStrategy {
   }
 
   /**
+   * Fetch all valid trading symbols from Binance
+   * This prevents "Invalid symbol" errors by only checking real trading pairs
+   */
+  async fetchAllSymbols(): Promise<string[]> {
+    try {
+      console.log('[Binance] Fetching all valid trading symbols...');
+      // This endpoint doesn't require authentication
+      const response = await fetch(`${this.baseUrl}/api/v3/exchangeInfo`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch exchange info');
+      }
+      
+      const data = await response.json();
+      const symbols = data.symbols
+        .filter((s: any) => s.status === 'TRADING') // Only active pairs
+        .map((s: any) => s.symbol);
+      
+      console.log(`[Binance] Found ${symbols.length} valid trading symbols`);
+      return symbols;
+    } catch (error) {
+      console.error('[Binance] Failed to fetch symbols:', error);
+      return [];
+    }
+  }
+
+  /**
    * Fetch deposit history
    */
   async fetchDeposits(
@@ -260,14 +287,18 @@ export class BinanceStrategy {
     const accountInfo = await this.fetchAccountInfo(credentials);
     const balances = accountInfo.balances || [];
 
-    // Get assets with non-zero balances
+    // Get assets with non-zero balances or history
     const assetsWithBalance = balances
       .filter((b: any) => parseFloat(b.free) > 0 || parseFloat(b.locked) > 0)
       .map((b: any) => b.asset);
 
     console.log(`[Binance] Found ${assetsWithBalance.length} assets with balance:`, assetsWithBalance.slice(0, 10));
 
-    // Step 2: Fetch deposits and withdrawals
+    // Step 2: Fetch all valid trading symbols from Binance
+    console.log('[Binance] Fetching valid trading symbols...');
+    const allValidSymbols = await this.fetchAllSymbols();
+    
+    // Step 3: Fetch deposits and withdrawals
     console.log('[Binance] Fetching deposits and withdrawals...');
     const [deposits, withdrawals] = await Promise.all([
       this.fetchDeposits(credentials, startTime, endTime),
@@ -276,62 +307,83 @@ export class BinanceStrategy {
 
     console.log(`[Binance] Found ${deposits.length} deposits and ${withdrawals.length} withdrawals`);
 
-    // Step 3: Build list of likely trading pairs
-    const commonQuoteAssets = ['USDT', 'BUSD', 'USDC', 'BTC', 'ETH', 'BNB'];
+    // Get all assets from deposits and withdrawals
+    const allAssets = new Set<string>([
+      ...assetsWithBalance,
+      ...deposits.map(d => d.asset),
+      ...withdrawals.map(w => w.asset),
+    ]);
+
+    console.log(`[Binance] Total unique assets to check: ${allAssets.size}`, Array.from(allAssets));
+
+    // Step 4: Build list of trading pairs to check (only valid ones)
+    const commonQuoteAssets = ['USDT', 'BUSD', 'USDC', 'BTC', 'ETH', 'BNB', 'EUR', 'GBP', 'TRY', 'FDUSD'];
     const symbolsToCheck = new Set<string>();
 
-    // Generate potential symbols from assets with balance
-    assetsWithBalance.forEach((asset: string) => {
+    // Generate potential symbols from all assets and filter against valid symbols
+    allAssets.forEach((asset: string) => {
       commonQuoteAssets.forEach(quote => {
         if (asset !== quote) {
-          symbolsToCheck.add(`${asset}${quote}`);
+          const symbol = `${asset}${quote}`;
+          if (allValidSymbols.includes(symbol)) {
+            symbolsToCheck.add(symbol);
+          }
         }
       });
     });
 
-    // Also check reverse pairs for major assets
-    const majorAssets = ['BTC', 'ETH', 'BNB'];
+    // Also check reverse pairs (e.g., BTCETH, ETHBTC)
+    const majorAssets = ['BTC', 'ETH', 'BNB', 'USDT'];
     majorAssets.forEach(major => {
-      assetsWithBalance.forEach((asset: string) => {
-        if (asset !== major && !commonQuoteAssets.includes(asset)) {
-          symbolsToCheck.add(`${asset}${major}`);
+      allAssets.forEach((asset: string) => {
+        if (asset !== major) {
+          const symbol = `${asset}${major}`;
+          if (allValidSymbols.includes(symbol)) {
+            symbolsToCheck.add(symbol);
+          }
         }
       });
     });
 
-    console.log(`[Binance] Checking ${symbolsToCheck.size} potential trading pairs...`);
+    console.log(`[Binance] Checking ${symbolsToCheck.size} valid trading pairs (filtered from ${allValidSymbols.length} total symbols)`);
 
-    // Step 4: Fetch trades for each symbol (with rate limiting)
+    // Step 5: Fetch trades for each symbol (with rate limiting)
     const allTrades: BinanceTransaction[] = [];
     const symbolArray = Array.from(symbolsToCheck);
-    const batchSize = 10; // Process 10 symbols at a time to avoid rate limits
+    const batchSize = 20; // Process 20 symbols at a time (faster now that we only check valid ones)
 
     for (let i = 0; i < symbolArray.length; i += batchSize) {
       const batch = symbolArray.slice(i, i + batchSize);
+      
+      console.log(`[Binance] Processing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(symbolArray.length / batchSize)} (${batch.length} symbols)`);
       
       const batchTrades = await Promise.all(
         batch.map(symbol => this.fetchTradesForSymbol(credentials, symbol, startTime, endTime))
       );
 
-      batchTrades.forEach(trades => {
+      batchTrades.forEach((trades, index) => {
         if (trades.length > 0) {
+          console.log(`[Binance] ✓ ${batch[index]}: ${trades.length} trades`);
           allTrades.push(...trades);
         }
       });
 
       // Small delay between batches to respect rate limits
       if (i + batchSize < symbolArray.length) {
-        await new Promise(resolve => setTimeout(resolve, 200));
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
     }
 
-    console.log(`[Binance] Found ${allTrades.length} trades`);
+    console.log(`[Binance] Found ${allTrades.length} trades across all pairs`);
 
-    // Step 5: Combine all transactions and sort by timestamp
+    // Step 6: Combine all transactions and sort by timestamp
     const allTransactions = [...deposits, ...withdrawals, ...allTrades];
     allTransactions.sort((a, b) => a.timestamp - b.timestamp);
 
-    console.log(`[Binance] Total transactions: ${allTransactions.length}`);
+    console.log(`[Binance] ✅ Total transactions: ${allTransactions.length}`);
+    console.log(`[Binance]    - Deposits: ${deposits.length}`);
+    console.log(`[Binance]    - Withdrawals: ${withdrawals.length}`);
+    console.log(`[Binance]    - Trades: ${allTrades.length}`);
 
     return allTransactions;
   }

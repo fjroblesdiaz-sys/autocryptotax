@@ -159,6 +159,10 @@ export const ReportGenerationContainer = () => {
       console.log('[ReportGeneration] Generated report object:', generatedReport);
 
       // Save to context
+      console.log('[ReportGeneration] Setting report and CSV in context');
+      console.log('[ReportGeneration] CSV length:', result.csv?.length || 0);
+      console.log('[ReportGeneration] CSV preview:', result.csv?.substring(0, 300));
+      
       setGeneratedReport(generatedReport);
       if (result.csv) {
         setReportCSV(result.csv);
