@@ -18,7 +18,7 @@ interface ReportCompleteContainerProps {
  */
 export const ReportCompleteContainer = ({ reportId }: ReportCompleteContainerProps) => {
   const router = useRouter();
-  const { generatedReport, reportCSV, dataSource, sourceData, reportType, fiscalYear } = useReportData();
+  const { generatedReport, reportCSV, dataSource, sourceData, reportType, fiscalYear, setReportCSV } = useReportData();
   const [report, setReport] = useState<GeneratedReport | null>(null);
   const [isReady, setIsReady] = useState(false);
 
@@ -70,6 +70,13 @@ export const ReportCompleteContainer = ({ reportId }: ReportCompleteContainerPro
         const data = JSON.parse(stored);
         console.log('[ReportComplete] Report loaded from localStorage');
         setReport(data.report);
+        
+        // Restore CSV to context if available
+        if (data.csv) {
+          console.log('[ReportComplete] Restoring CSV from localStorage');
+          setReportCSV(data.csv);
+        }
+        
         setIsReady(true);
         return;
       }

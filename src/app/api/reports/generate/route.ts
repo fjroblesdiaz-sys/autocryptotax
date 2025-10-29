@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
           });
           formattedOutput = 'PDF generated';
         } else if (validated.format === 'csv') {
-          formattedOutput = formatModel100CSV(report);
+          formattedOutput = formatModel100CSV(report, taxCalculation);
         } else {
           formattedOutput = formatReportJSON(report);
         }

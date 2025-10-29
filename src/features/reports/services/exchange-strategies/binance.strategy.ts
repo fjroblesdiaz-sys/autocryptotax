@@ -216,7 +216,11 @@ export class BinanceStrategy {
         raw: trade,
       }));
     } catch (error) {
-      // Symbol might not exist or have no trades
+      // Silently skip invalid symbols - this is expected when checking trading pairs
+      // Only log if it's not an "Invalid symbol" error
+      if (error instanceof Error && !error.message.includes('Invalid symbol') && !error.message.includes('-1121')) {
+        console.warn(`[Binance] Error fetching trades for ${symbol}:`, error.message);
+      }
       return [];
     }
   }

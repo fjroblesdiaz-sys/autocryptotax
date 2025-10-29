@@ -259,14 +259,44 @@ export function generateModel714Report(
 
 /**
  * Format report as CSV for Modelo 100
+ * Includes all transactions and capital gains
  */
-export function formatModel100CSV(report: SpanishTaxReport): string {
+export function formatModel100CSV(report: SpanishTaxReport, taxCalculation?: TaxCalculationResult): string {
+  console.log('[formatModel100CSV] Called with taxCalculation:', !!taxCalculation);
+  console.log('[formatModel100CSV] Transactions count:', taxCalculation?.transactions?.length || 0);
+  
   if (report.reportType !== 'model-100') {
     throw new Error('Invalid report type for Modelo 100 CSV');
   }
 
   const data = report.data as Model100Data;
-  let csv = 'Tipo,Descripción,Fecha Adquisición,Valor Adquisición,Fecha Venta,Valor Venta,Ganancia/Pérdida\n';
+  let csv = '';
+
+  // Section 1: All Transactions
+  if (taxCalculation && taxCalculation.transactions) {
+    console.log('[formatModel100CSV] Adding ALL TRANSACTIONS section with', taxCalculation.transactions.length, 'transactions');
+    csv += 'TODAS LAS TRANSACCIONES\n';
+    csv += 'Fecha,Tipo,Activo,Cantidad,Precio EUR,Valor EUR,Comisión,Comisión EUR\n';
+    
+    taxCalculation.transactions.forEach(tx => {
+      const typeLabel = {
+        'buy': 'Compra',
+        'sell': 'Venta',
+        'transfer_in': 'Depósito',
+        'transfer_out': 'Retiro',
+        'swap': 'Intercambio',
+        'fee': 'Comisión'
+      }[tx.type] || tx.type;
+
+      csv += `${tx.date.toLocaleDateString('es-ES')},${typeLabel},${tx.asset},${tx.amount},${tx.priceEUR.toFixed(2)},${tx.valueEUR.toFixed(2)},${tx.fee || 0},${tx.feeValueEUR || 0}\n`;
+    });
+    
+    csv += `\nTotal de Transacciones: ${taxCalculation.transactions.length}\n\n`;
+  }
+
+  // Section 2: Capital Gains (Ganancias y Pérdidas)
+  csv += 'GANANCIAS Y PÉRDIDAS PATRIMONIALES\n';
+  csv += 'Tipo,Activo,Fecha Adquisición,Valor Adquisición EUR,Fecha Venta,Valor Venta EUR,Ganancia/Pérdida EUR\n';
 
   data.capitalGains.shortTerm.forEach(entry => {
     csv += `Corto Plazo,${entry.description},${entry.acquisitionDate},${entry.acquisitionValue.toFixed(2)},${entry.disposalDate},${entry.disposalValue.toFixed(2)},${entry.gain.toFixed(2)}\n`;
@@ -276,14 +306,25 @@ export function formatModel100CSV(report: SpanishTaxReport): string {
     csv += `Largo Plazo,${entry.description},${entry.acquisitionDate},${entry.acquisitionValue.toFixed(2)},${entry.disposalDate},${entry.disposalValue.toFixed(2)},${entry.gain.toFixed(2)}\n`;
   });
 
-  csv += '\nResumen\n';
-  csv += `Ganancias Corto Plazo,${data.summary.totalShortTermGains.toFixed(2)}\n`;
-  csv += `Pérdidas Corto Plazo,${data.summary.totalShortTermLosses.toFixed(2)}\n`;
-  csv += `Resultado Neto Corto Plazo,${data.summary.netShortTerm.toFixed(2)}\n`;
-  csv += `Ganancias Largo Plazo,${data.summary.totalLongTermGains.toFixed(2)}\n`;
-  csv += `Pérdidas Largo Plazo,${data.summary.totalLongTermLosses.toFixed(2)}\n`;
-  csv += `Resultado Neto Largo Plazo,${data.summary.netLongTerm.toFixed(2)}\n`;
-  csv += `RESULTADO TOTAL,${data.summary.netTotal.toFixed(2)}\n`;
+  // Section 3: Summary
+  csv += '\nRESUMEN FISCAL\n';
+  csv += `Ganancias Corto Plazo,${data.summary.totalShortTermGains.toFixed(2)} EUR\n`;
+  csv += `Pérdidas Corto Plazo,${data.summary.totalShortTermLosses.toFixed(2)} EUR\n`;
+  csv += `Resultado Neto Corto Plazo,${data.summary.netShortTerm.toFixed(2)} EUR\n`;
+  csv += `Ganancias Largo Plazo,${data.summary.totalLongTermGains.toFixed(2)} EUR\n`;
+  csv += `Pérdidas Largo Plazo,${data.summary.totalLongTermLosses.toFixed(2)} EUR\n`;
+  csv += `Resultado Neto Largo Plazo,${data.summary.netLongTerm.toFixed(2)} EUR\n`;
+  csv += `RESULTADO TOTAL,${data.summary.netTotal.toFixed(2)} EUR\n`;
+
+  // Section 4: Holdings (if available)
+  if (taxCalculation && taxCalculation.holdings && taxCalculation.holdings.length > 0) {
+    csv += '\nPOSICIONES ACTUALES\n';
+    csv += 'Activo,Cantidad,Costo Promedio EUR,Costo Total EUR\n';
+    
+    taxCalculation.holdings.forEach(holding => {
+      csv += `${holding.asset},${holding.quantity},${holding.averageCost.toFixed(2)},${holding.totalCost.toFixed(2)}\n`;
+    });
+  }
 
   return csv;
 }

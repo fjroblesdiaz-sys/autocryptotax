@@ -12,6 +12,7 @@ import { exchangeAPIService, ExchangeTransaction } from '@/features/reports/serv
 import { calculateTaxFIFO, ProcessedTransaction } from '@/features/reports/services/tax-calculation.service';
 import { generateModel100Report, formatModel100CSV, formatReportJSON } from '@/features/reports/services/report-format.service';
 import { generateModel100PDF } from '@/features/reports/services/pdf-generator.service';
+import { priceAPIService } from '@/features/reports/services/price-api.service';
 
 // Request validation schema
 const GenerateReportSchema = z.object({
@@ -38,10 +39,30 @@ type GenerateReportRequest = z.infer<typeof GenerateReportSchema>;
 /**
  * Convert ExchangeTransaction to ProcessedTransaction format
  */
-function convertExchangeTransactions(
+async function convertExchangeTransactions(
   exchangeTransactions: ExchangeTransaction[]
-): ProcessedTransaction[] {
+): Promise<ProcessedTransaction[]> {
   console.log(`[Exchange API] Converting ${exchangeTransactions.length} transactions to ProcessedTransaction format`);
+  
+  // Get unique assets that need pricing
+  const assetsNeedingPrices = new Set<string>();
+  exchangeTransactions.forEach(tx => {
+    if (tx.price === 0 || tx.total === 0) {
+      assetsNeedingPrices.add(tx.asset);
+      if (tx.feeAsset && tx.feeAsset !== tx.asset) {
+        assetsNeedingPrices.add(tx.feeAsset);
+      }
+    }
+  });
+
+  // Fetch current prices for all assets that need them
+  const prices = new Map<string, number>();
+  if (assetsNeedingPrices.size > 0) {
+    console.log(`[Exchange API] Fetching current prices for ${assetsNeedingPrices.size} assets...`);
+    const fetchedPrices = await priceAPIService.getPricesInEUR(Array.from(assetsNeedingPrices));
+    fetchedPrices.forEach((price, symbol) => prices.set(symbol, price));
+    console.log(`[Exchange API] Fetched prices for assets:`, Array.from(prices.keys()).join(', '));
+  }
   
   return exchangeTransactions.map((tx) => {
     // Map exchange transaction types to tax calculation types
@@ -68,50 +89,27 @@ function convertExchangeTransactions(
         type = 'transfer_in';
     }
 
-    // For deposits/withdrawals with no price, we need to use a market price
-    // In production, this should fetch from a price API
-    // For now, use mock prices for common cryptocurrencies
+    // Use traded price if available, otherwise use fetched market price
     let priceEUR = tx.price;
     let valueEUR = tx.total;
     
     if (tx.price === 0 || tx.total === 0) {
-      // Mock prices in EUR (approximate market prices for testing)
-      const mockPrices: Record<string, number> = {
-        // Stablecoins
-        'USDT': 0.92,
-        'USDC': 0.92,
-        'BUSD': 0.92,
-        'DAI': 0.92,
-        'TUSD': 0.92,
-        // Major cryptocurrencies
-        'BTC': 85000,
-        'ETH': 3200,
-        'BNB': 580,
-        'SOL': 140,
-        'XRP': 0.50,
-        'ADA': 0.45,
-        'DOGE': 0.08,
-        'DOT': 6.5,
-        'MATIC': 0.85,
-        'LTC': 85,
-        'AVAX': 35,
-        'LINK': 14,
-        'UNI': 8,
-        'ATOM': 10,
-        // Other tokens
-        'NXPC': 0.01, // Unknown token, use minimal price
-      };
-      
-      priceEUR = mockPrices[tx.asset] || 1.0; // Default to 1 EUR if not found
+      // Use fetched price or fallback to 1 EUR
+      priceEUR = prices.get(tx.asset) || 1.0;
       valueEUR = tx.amount * priceEUR;
-      
-      if (!mockPrices[tx.asset]) {
-        console.warn(`[Exchange API] No mock price for ${tx.asset}, using 1 EUR`);
-      }
     }
 
     // Calculate fee value
-    const feeValueEUR = tx.fee > 0 && priceEUR > 0 ? tx.fee * priceEUR : 0;
+    let feeValueEUR = 0;
+    if (tx.fee > 0) {
+      if (tx.feeAsset === tx.asset) {
+        feeValueEUR = tx.fee * priceEUR;
+      } else {
+        // Fee is in a different asset, use its price
+        const feeAssetPrice = prices.get(tx.feeAsset) || priceEUR;
+        feeValueEUR = tx.fee * feeAssetPrice;
+      }
+    }
 
     const processed: ProcessedTransaction = {
       hash: tx.id,
@@ -214,7 +212,7 @@ export async function POST(request: NextRequest) {
     console.log(`Found ${exchangeTransactions.length} transactions from ${validated.exchange}`);
 
     // Step 3: Convert to standard format
-    const processedTransactions = convertExchangeTransactions(exchangeTransactions);
+    const processedTransactions = await convertExchangeTransactions(exchangeTransactions);
     
     console.log(`[Exchange API] Converted ${processedTransactions.length} transactions:`);
     processedTransactions.slice(0, 5).forEach((tx, i) => {
@@ -262,7 +260,7 @@ export async function POST(request: NextRequest) {
     );
     
     if (validated.format === 'csv') {
-      formattedOutput = formatModel100CSV(report);
+      formattedOutput = formatModel100CSV(report, taxCalculation);
     } else if (validated.format === 'pdf') {
       // Generate PDF
       pdfBuffer = await generateModel100PDF(report, taxCalculation, {
