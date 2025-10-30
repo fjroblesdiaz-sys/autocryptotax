@@ -10,14 +10,15 @@ import { DataInputContainer } from '@/features/reports/containers/data-input.con
 function DataInputPageInner() {
   const searchParams = useSearchParams();
   const sourceParam = searchParams.get('source');
+  const reportRequestIdParam = searchParams.get('reportRequestId');
 
-  return <DataInputContainer sourceParam={sourceParam} />;
+  return <DataInputContainer sourceParam={sourceParam} reportRequestIdParam={reportRequestIdParam} />;
 }
 
 /**
  * Data Input Page
  * Handles data collection for all data source types
- * Receives source type via URL search params
+ * Receives source type and report request ID via URL search params
  */
 export default function DataInputPage() {
   return (

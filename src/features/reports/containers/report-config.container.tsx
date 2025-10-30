@@ -1,60 +1,84 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { ReportGenerationWizard } from '@/features/reports/components/report-generation-wizard.component';
 import { ReportType } from '@/features/reports/types/reports.types';
-import { useReportData } from '@/features/reports/context/report-data.context';
+import { useReportRequest } from '@/features/reports/hooks/use-report-request.hook';
+
+interface ReportConfigContainerProps {
+  reportRequestIdParam: string | null;
+}
 
 /**
  * Report Configuration Container
  * Allows users to configure report type and fiscal year
  */
-export const ReportConfigContainer = () => {
+export const ReportConfigContainer = ({ reportRequestIdParam }: ReportConfigContainerProps) => {
   const router = useRouter();
-  const { dataSource, sourceData, setReportType, setFiscalYear } = useReportData();
-  const [isReady, setIsReady] = useState(false);
+  const { reportRequest, update, isLoading, error } = useReportRequest(reportRequestIdParam || undefined);
 
   useEffect(() => {
-    // Validate that we have the required data to be on this page
-    console.log('[ReportConfig] Context data:', { dataSource, hasSourceData: !!sourceData });
-    
-    if (!dataSource || !sourceData) {
-      // Missing required data, redirect back to start
-      console.log('[ReportConfig] Missing required data, redirecting to /reports');
+    // Validate that we have a report request ID
+    if (!reportRequestIdParam) {
+      console.log('[ReportConfig] Missing report request ID, redirecting to /reports');
       router.push('/reports');
       return;
     }
     
-    console.log('[ReportConfig] Ready with data source:', dataSource);
-    setIsReady(true);
-  }, [dataSource, sourceData, router]);
+    // Validate that report request has source data
+    if (reportRequest && !reportRequest.sourceData) {
+      console.log('[ReportConfig] Report request missing source data, redirecting back');
+      router.push(`/reports/data-input?reportRequestId=${reportRequestIdParam}&source=${reportRequest.dataSource}`);
+      return;
+    }
+  }, [reportRequestIdParam, reportRequest, router]);
 
-  const handleGenerate = (reportType: ReportType, year: number) => {
+  const handleGenerate = async (reportType: ReportType, year: number) => {
     console.log('[ReportConfig] Saving report config:', { reportType, year });
     
-    // Save to context
-    setReportType(reportType);
-    setFiscalYear(year);
-    
-    // Navigate to generation page
-    router.push('/reports/generate');
+    try {
+      // Update report request with configuration
+      await update({
+        reportType,
+        fiscalYear: year,
+      });
+      
+      // Navigate to generation page
+      router.push(`/reports/generate?reportRequestId=${reportRequestIdParam}`);
+    } catch (error) {
+      console.error('[ReportConfig] Failed to update report request:', error);
+      alert('Failed to save configuration. Please try again.');
+    }
   };
 
   const handleBack = () => {
-    // Go back to data input page with the source
-    if (dataSource) {
-      router.push(`/reports/data-input?source=${dataSource}`);
+    // Go back to data input page
+    if (reportRequest) {
+      router.push(`/reports/data-input?reportRequestId=${reportRequestIdParam}&source=${reportRequest.dataSource}`);
     } else {
       router.push('/reports');
     }
   };
 
-  if (!isReady) {
+  if (isLoading || !reportRequest) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="text-center">
           <p className="text-muted-foreground">Cargando...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center">
+          <p className="text-destructive">Error: {error}</p>
+          <button onClick={() => router.push('/reports')} className="mt-4 underline">
+            Volver al inicio
+          </button>
         </div>
       </div>
     );
@@ -75,7 +99,7 @@ export const ReportConfigContainer = () => {
         <ReportGenerationWizard
           onGenerate={handleGenerate}
           onBack={handleBack}
-          isGenerating={false}
+          isGenerating={isLoading}
           generationProgress={0}
         />
       </div>

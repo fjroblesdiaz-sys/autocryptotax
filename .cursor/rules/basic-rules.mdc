@@ -4,6 +4,7 @@
 This is a Next.js 15 + Prisma TypeScript application using:
 - React 19 with JSX runtime
 - Prisma for database management
+- Axios for https queries.
 - Tailwind CSS for styling
 - shadcn/ui for component library
 - pnpm as package manager

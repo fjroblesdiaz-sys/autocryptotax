@@ -2,31 +2,39 @@
 
 import { DataSourceSelection } from '@/features/reports/components/data-source-selection.component';
 import { DataSourceType } from '@/features/reports/types/reports.types';
-import { useReportData } from '@/features/reports/context/report-data.context';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useState } from 'react';
+import { useReportRequest } from '@/features/reports/hooks/use-report-request.hook';
 
 /**
  * Data Source Selection Container
- * Handles data source selection logic
+ * Handles data source selection logic and creates a new report request
  */
 export const DataSourceSelectionContainer = () => {
   const router = useRouter();
-  const { clearAll, setDataSource } = useReportData();
+  const { create, isLoading } = useReportRequest();
+  const [selectedSource, setSelectedSource] = useState<DataSourceType | undefined>(undefined);
 
-  // Clear any existing report data when starting fresh
-  useEffect(() => {
-    clearAll();
-  }, [clearAll]);
-
-  const handleSelectDataSource = (source: DataSourceType) => {
+  const handleSelectDataSource = async (source: DataSourceType) => {
     console.log('[DataSourceSelection] Selected source:', source);
+    setSelectedSource(source);
     
-    // Save to context
-    setDataSource(source);
-    
-    // Navigate to data input page with source as query param
-    router.push(`/reports/data-input?source=${source}`);
+    try {
+      // Create a new report request in the database
+      const reportRequest = await create({
+        dataSource: source,
+      });
+      
+      console.log('[DataSourceSelection] Created report request:', reportRequest.id);
+      
+      // Navigate to data input page with report request ID and source
+      router.push(`/reports/data-input?reportRequestId=${reportRequest.id}&source=${source}`);
+    } catch (error) {
+      console.error('[DataSourceSelection] Failed to create report request:', error);
+      // Show error to user
+      alert('Failed to create report request. Please try again.');
+      setSelectedSource(undefined);
+    }
   };
 
   return (
@@ -43,8 +51,15 @@ export const DataSourceSelectionContainer = () => {
         {/* Data Source Selection */}
         <DataSourceSelection
           onSelect={handleSelectDataSource}
-          selectedSource={undefined}
+          selectedSource={selectedSource}
         />
+
+        {/* Loading State */}
+        {isLoading && (
+          <div className="text-center text-muted-foreground">
+            Creando solicitud de informe...
+          </div>
+        )}
       </div>
     </div>
   );

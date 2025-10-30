@@ -1,0 +1,56 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Report Request Model
+// Stores all the information as users fill out the report generation forms
+model ReportRequest {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Step 1: Data Source Selection
+  dataSource String? // 'wallet' | 'csv' | 'manual' | 'api-key' | 'oauth'
+
+  // Step 2: Source Data (stored as JSON)
+  // Can be WalletData, CSVUploadData, APIKeyData, OAuthData, or ManualEntryTransaction[]
+  sourceData Json?
+
+  // Step 3: Report Configuration
+  reportType String? // 'model-100' | 'model-720' | 'model-714'
+  fiscalYear Int?
+
+  // Step 4: Report Generation
+  status          String  @default("draft") // 'draft' | 'processing' | 'completed' | 'error'
+  generatedReport Json? // The structured report data
+
+  // Cloudinary storage
+  cloudinaryPublicId String? // Public ID in Cloudinary for the generated file
+  cloudinaryUrl      String? // Direct URL to download from Cloudinary
+  fileFormat         String? // 'csv' | 'pdf' | 'json'
+
+  // Taxpayer information (optional)
+  taxpayerNif     String?
+  taxpayerName    String?
+  taxpayerSurname String?
+
+  // Error handling
+  errorMessage String?
+
+  // Summary statistics
+  totalTransactions Int?
+  totalGains        Float?
+  totalLosses       Float?
+  netResult         Float?
+
+  @@index([createdAt])
+  @@index([status])
+}

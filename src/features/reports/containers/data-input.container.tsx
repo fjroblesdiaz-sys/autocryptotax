@@ -15,57 +15,61 @@ import {
   ManualEntryTransaction,
   DataSourceType,
 } from '@/features/reports/types/reports.types';
-import { useReportData } from '@/features/reports/context/report-data.context';
+import { useReportRequest } from '@/features/reports/hooks/use-report-request.hook';
 import { useEffect, useState } from 'react';
 
 interface DataInputContainerProps {
   sourceParam: string | null;
+  reportRequestIdParam: string | null;
 }
 
 /**
  * Data Input Container
- * Handles data collection for all data source types
+ * Handles data collection for all data source types and updates report request
  */
-export const DataInputContainer = ({ sourceParam }: DataInputContainerProps) => {
+export const DataInputContainer = ({ sourceParam, reportRequestIdParam }: DataInputContainerProps) => {
   const router = useRouter();
   const { address } = useAuth();
-  const { dataSource, setDataSource, setSourceData } = useReportData();
+  const { reportRequest, update, isLoading, error } = useReportRequest(reportRequestIdParam || undefined);
   
   const [source, setSource] = useState<DataSourceType | null>(null);
 
   useEffect(() => {
-    if (!sourceParam) {
-      // No source specified, redirect back to source selection
-      console.log('[DataInput] No source param, redirecting to /reports');
+    if (!sourceParam || !reportRequestIdParam) {
+      // No source or report request ID specified, redirect back to source selection
+      console.log('[DataInput] Missing params, redirecting to /reports');
       router.push('/reports');
       return;
     }
     
     const sourceType = sourceParam as DataSourceType;
     console.log('[DataInput] Using data source:', sourceType);
-    
-    // Sync with context
-    if (sourceType !== dataSource) {
-      setDataSource(sourceType);
-    }
+    console.log('[DataInput] Report request ID:', reportRequestIdParam);
     
     setSource(sourceType);
-  }, [sourceParam, dataSource, router, setDataSource]);
+  }, [sourceParam, reportRequestIdParam, router]);
 
-  const handleSubmit = (
+  const handleSubmit = async (
     data: WalletData | CSVUploadData | APIKeyData | OAuthData | ManualEntryTransaction[]
   ) => {
     console.log('[DataInput] Submitting data:', data);
     
-    // Save to context
-    setSourceData(data);
-    
-    // Navigate to report configuration page
-    router.push('/reports/configure');
+    try {
+      // Update report request with source data
+      await update({
+        sourceData: data,
+      });
+      
+      // Navigate to report configuration page
+      router.push(`/reports/configure?reportRequestId=${reportRequestIdParam}`);
+    } catch (error) {
+      console.error('[DataInput] Failed to update report request:', error);
+      alert('Failed to save data. Please try again.');
+    }
   };
 
   const handleBack = () => {
-    // Go back to source selection
+    // Go back to source selection (this will create a new report request)
     router.push('/reports');
   };
 

@@ -3,7 +3,7 @@
  * POST /api/reports/generate
  * 
  * Generates tax declarations from wallet data
- * Supports third-party API access
+ * Saves to database and uploads to Cloudinary
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -12,9 +12,12 @@ import { fetchWalletTransactions } from '@/features/reports/services/blockchain.
 import { processBlockchainTransactions, calculateTaxFIFO } from '@/features/reports/services/tax-calculation.service';
 import { generateModel100Report, formatModel100CSV, formatReportJSON } from '@/features/reports/services/report-format.service';
 import { generateModel100PDF } from '@/features/reports/services/pdf-generator.service';
+import { prisma } from '@/lib/prisma';
+import { uploadReportToCloudinary } from '@/lib/cloudinary';
 
 // Request validation schema
 const GenerateReportSchema = z.object({
+  reportRequestId: z.string().optional(), // ID of existing report request to update
   walletAddress: z.string().min(1, 'Wallet address is required'),
   chain: z.string().default('ethereum'),
   fiscalYear: z.number().int().min(2009).max(new Date().getFullYear()),
@@ -28,16 +31,60 @@ const GenerateReportSchema = z.object({
     name: z.string().optional(),
     surname: z.string().optional(),
   }).optional(),
-  format: z.enum(['json', 'csv', 'pdf']).default('json'),
+  format: z.enum(['json', 'csv', 'pdf']).default('pdf'),
 });
 
 type GenerateReportRequest = z.infer<typeof GenerateReportSchema>;
 
 export async function POST(request: NextRequest) {
+  let reportRequest: any = null;
+  
   try {
     // Parse and validate request body
     const body = await request.json();
     const validated = GenerateReportSchema.parse(body);
+
+    // Step 0: Create or update report request in database
+    if (validated.reportRequestId) {
+      reportRequest = await prisma.reportRequest.update({
+        where: { id: validated.reportRequestId },
+        data: {
+          status: 'processing',
+          dataSource: 'wallet',
+          sourceData: {
+            walletAddress: validated.walletAddress,
+            chain: validated.chain,
+            dateRange: validated.dateRange,
+          },
+          reportType: validated.reportType,
+          fiscalYear: validated.fiscalYear,
+          taxpayerNif: validated.taxpayerInfo?.nif,
+          taxpayerName: validated.taxpayerInfo?.name,
+          taxpayerSurname: validated.taxpayerInfo?.surname,
+          fileFormat: validated.format,
+        },
+      });
+      console.log(`[API] Updated existing report request: ${reportRequest.id}`);
+    } else {
+      reportRequest = await prisma.reportRequest.create({
+        data: {
+          status: 'processing',
+          dataSource: 'wallet',
+          sourceData: {
+            walletAddress: validated.walletAddress,
+            chain: validated.chain,
+            dateRange: validated.dateRange,
+          },
+          reportType: validated.reportType,
+          fiscalYear: validated.fiscalYear,
+          taxpayerNif: validated.taxpayerInfo?.nif,
+          taxpayerName: validated.taxpayerInfo?.name,
+          taxpayerSurname: validated.taxpayerInfo?.surname,
+          fileFormat: validated.format,
+        },
+      });
+      console.log(`[API] Created new report request: ${reportRequest.id}`);
+    }
 
     // TODO: Add authentication/API key validation for production
     // const apiKey = request.headers.get('X-API-Key');
@@ -122,29 +169,69 @@ export async function POST(request: NextRequest) {
         }, { status: 400 });
     }
 
-    // Step 5: Return the generated report
-    const reportId = `report-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    // Step 5: Upload to Cloudinary
+    console.log(`[API] Uploading report to Cloudinary...`);
+    let cloudinaryResult = null;
+    let fileBuffer: Buffer;
 
-    // TODO: Save report to database for download later
-    // await saveReport(reportId, report, formattedOutput, pdfBuffer);
-
-    // If PDF format, return the file directly
     if (validated.format === 'pdf' && pdfBuffer) {
-      return new NextResponse(pdfBuffer as unknown as BodyInit, {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/pdf',
-          'Content-Disposition': `attachment; filename="modelo-${validated.reportType}-${validated.fiscalYear}-${reportId}.pdf"`,
-        },
-      });
+      fileBuffer = pdfBuffer;
+    } else if (validated.format === 'csv') {
+      fileBuffer = Buffer.from(formattedOutput, 'utf-8');
+    } else {
+      fileBuffer = Buffer.from(formattedOutput, 'utf-8');
     }
 
-    // For JSON and CSV, return structured response
+    try {
+      cloudinaryResult = await uploadReportToCloudinary(fileBuffer, {
+        reportId: reportRequest.id,
+        format: validated.format,
+        fiscalYear: validated.fiscalYear,
+        reportType: validated.reportType,
+      });
+      console.log(`[API] Successfully uploaded to Cloudinary: ${cloudinaryResult.secure_url}`);
+    } catch (cloudinaryError) {
+      console.error('[API] Cloudinary upload failed:', cloudinaryError);
+      await prisma.reportRequest.update({
+        where: { id: reportRequest.id },
+        data: {
+          status: 'error',
+          errorMessage: `Report generated but failed to upload to Cloudinary: ${cloudinaryError instanceof Error ? cloudinaryError.message : 'Unknown error'}`,
+        },
+      });
+      
+      return NextResponse.json({
+        error: 'Failed to upload report to cloud storage',
+        message: cloudinaryError instanceof Error ? cloudinaryError.message : 'Unknown error',
+        reportRequestId: reportRequest.id,
+      }, { status: 500 });
+    }
+
+    // Step 6: Update database with final report data
+    const updatedReportRequest = await prisma.reportRequest.update({
+      where: { id: reportRequest.id },
+      data: {
+        status: 'completed',
+        generatedReport: report as any, // Cast to any for Prisma Json field
+        cloudinaryPublicId: cloudinaryResult.public_id,
+        cloudinaryUrl: cloudinaryResult.secure_url,
+        totalTransactions: taxCalculation.transactions.length,
+        totalGains: taxCalculation.summary.totalGains,
+        totalLosses: taxCalculation.summary.totalLosses,
+        netResult: taxCalculation.summary.netResult,
+      },
+    });
+
+    console.log(`[API] Report generation completed successfully:`, {
+      reportRequestId: reportRequest.id,
+      cloudinaryUrl: cloudinaryResult.secure_url,
+    });
+
+    // Return success response
     return NextResponse.json({
       success: true,
-      reportId,
-      report: validated.format === 'json' ? JSON.parse(formattedOutput) : undefined,
-      downloadUrl: `/api/reports/download/${reportId}`,
+      reportRequestId: reportRequest.id,
+      reportRequest: updatedReportRequest,
       summary: {
         fiscalYear: validated.fiscalYear,
         reportType: validated.reportType,
@@ -155,12 +242,25 @@ export async function POST(request: NextRequest) {
         netResult: taxCalculation.summary.netResult,
         generatedAt: new Date().toISOString(),
       },
-      // Include raw data in CSV response
-      ...(validated.format === 'csv' && { csv: formattedOutput }),
     }, { status: 200 });
 
   } catch (error) {
     console.error('Error generating report:', error);
+
+    // Update report request status to error if we have a reportRequest
+    if (reportRequest) {
+      try {
+        await prisma.reportRequest.update({
+          where: { id: reportRequest.id },
+          data: {
+            status: 'error',
+            errorMessage: error instanceof Error ? error.message : 'Unknown error occurred',
+          },
+        });
+      } catch (dbError) {
+        console.error('Failed to update report request status:', dbError);
+      }
+    }
 
     // Handle validation errors
     if (error instanceof z.ZodError) {
@@ -170,6 +270,7 @@ export async function POST(request: NextRequest) {
           field: issue.path.join('.'),
           message: issue.message,
         })),
+        reportRequestId: reportRequest?.id,
       }, { status: 400 });
     }
 
@@ -177,6 +278,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       error: 'Internal server error',
       message: error instanceof Error ? error.message : 'Unknown error occurred',
+      reportRequestId: reportRequest?.id,
     }, { status: 500 });
   }
 }

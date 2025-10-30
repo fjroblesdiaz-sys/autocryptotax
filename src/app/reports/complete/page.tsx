@@ -2,21 +2,21 @@
 
 import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { ReportCompleteContainer } from '@/features/reports/containers/report-complete.container';
+import { ReportCompleteContainerNew } from '@/features/reports/containers/report-complete-new.container';
 
 /**
  * Inner component that uses useSearchParams
  */
 function CompletePageInner() {
   const searchParams = useSearchParams();
-  const reportId = searchParams.get('id');
+  const reportRequestIdParam = searchParams.get('reportRequestId');
 
-  return <ReportCompleteContainer reportId={reportId} />;
+  return <ReportCompleteContainerNew reportRequestIdParam={reportRequestIdParam} />;
 }
 
 /**
  * Report Completion Page
- * Shows the completed report and allows download
+ * Shows the completed report and downloads from Cloudinary
  */
 export default function CompletePage() {
   return (
