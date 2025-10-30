@@ -22,7 +22,9 @@ function DataInputPageInner() {
  */
 export default function DataInputPage() {
   return (
-    <DataInputPageInner />
+    <Suspense fallback={<div className="container mx-auto px-4 py-8 text-center">Cargando...</div>}>
+      <DataInputPageInner />
+    </Suspense>
   );
 }
 

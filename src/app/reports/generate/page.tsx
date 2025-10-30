@@ -19,8 +19,9 @@ function GeneratePageInner() {
  */
 export default function GeneratePage() {
   return (
-    <GeneratePageInner />
-
+    <Suspense fallback={<div className="container mx-auto px-4 py-8 text-center">Generando...</div>}>
+      <GeneratePageInner />
+    </Suspense>
   );
 }
 
