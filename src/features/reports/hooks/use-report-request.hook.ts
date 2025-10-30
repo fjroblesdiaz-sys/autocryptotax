@@ -40,8 +40,11 @@ export function useReportRequest(initialId?: string): UseReportRequestResult {
     }
   }, [initialId]);
 
-  const loadReportRequest = async (id: string) => {
-    setIsLoading(true);
+  const loadReportRequest = async (id: string, keepExisting = false) => {
+    // Don't clear existing data if keepExisting is true (prevents flashing)
+    if (!keepExisting) {
+      setIsLoading(true);
+    }
     setError(null);
     try {
       const data = await getReportRequest(id);
@@ -93,7 +96,8 @@ export function useReportRequest(initialId?: string): UseReportRequestResult {
     if (!reportRequest?.id) {
       throw new Error('No report request to refresh');
     }
-    await loadReportRequest(reportRequest.id);
+    // Keep existing data during refresh to prevent UI flashing
+    await loadReportRequest(reportRequest.id, true);
   };
 
   const poll = async (): Promise<ReportRequestData> => {

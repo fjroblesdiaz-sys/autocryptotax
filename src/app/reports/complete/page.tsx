@@ -1,6 +1,5 @@
 'use client';
 
-import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ReportCompleteContainerNew } from '@/features/reports/containers/report-complete-new.container';
 
@@ -20,9 +19,7 @@ function CompletePageInner() {
  */
 export default function CompletePage() {
   return (
-    <Suspense fallback={<div className="container mx-auto px-4 py-8 text-center">Cargando...</div>}>
-      <CompletePageInner />
-    </Suspense>
+    <CompletePageInner />
   );
 }
 

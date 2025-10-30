@@ -21,9 +21,7 @@ function ConfigurePageInner() {
  */
 export default function ConfigurePage() {
   return (
-    <Suspense fallback={<div className="container mx-auto px-4 py-8 text-center">Cargando...</div>}>
-      <ConfigurePageInner />
-    </Suspense>
+    <ConfigurePageInner />
   );
 }
 

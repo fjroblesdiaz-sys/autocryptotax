@@ -6,6 +6,7 @@ import { ReportGenerationWizard } from '@/features/reports/components/report-gen
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
 import { useReportRequest } from '@/features/reports/hooks/use-report-request.hook';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface ReportGenerationImprovedContainerProps {
   reportRequestIdParam: string | null;
@@ -20,14 +21,32 @@ interface ReportGenerationImprovedContainerProps {
  */
 export const ReportGenerationImprovedContainer = ({ reportRequestIdParam }: ReportGenerationImprovedContainerProps) => {
   const router = useRouter();
-  const { reportRequest, refresh } = useReportRequest(reportRequestIdParam || undefined);
+  const { reportRequest, refresh, isLoading } = useReportRequest(reportRequestIdParam || undefined);
   
   const [progress, setProgress] = useState(0);
   const [progressMessage, setProgressMessage] = useState('Preparando...');
   const [isGenerating, setIsGenerating] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [hasStartedGeneration, setHasStartedGeneration] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [skeletonReady, setSkeletonReady] = useState(false);
   const eventSourceRef = useRef<EventSource | null>(null);
+
+  // Track when initial load is complete to prevent skeleton flashing
+  useEffect(() => {
+    if (reportRequest || (!isLoading && reportRequestIdParam)) {
+      setIsInitialLoad(false);
+    }
+  }, [reportRequest, isLoading, reportRequestIdParam]);
+
+  // Delay skeleton to avoid flash on very fast loads or brief remounts
+  useEffect(() => {
+    if (isInitialLoad && !reportRequest) {
+      const t = setTimeout(() => setSkeletonReady(true), 200);
+      return () => clearTimeout(t);
+    }
+    setSkeletonReady(false);
+  }, [isInitialLoad, reportRequest]);
 
   // Redirect if no report request ID
   useEffect(() => {
@@ -38,7 +57,7 @@ export const ReportGenerationImprovedContainer = ({ reportRequestIdParam }: Repo
     }
   }, [reportRequestIdParam, router]);
 
-  // Validate and start generation
+  // Validate and start generation (only run once when reportRequest is first loaded)
   useEffect(() => {
     if (!reportRequest || hasStartedGeneration) return;
 
@@ -79,7 +98,8 @@ export const ReportGenerationImprovedContainer = ({ reportRequestIdParam }: Repo
     // Start generation
     setHasStartedGeneration(true);
     startGeneration();
-  }, [reportRequest, hasStartedGeneration, reportRequestIdParam, router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reportRequest?.id, hasStartedGeneration]); // Only depend on ID, not the whole object
 
   // Cleanup on unmount
   useEffect(() => {
@@ -247,14 +267,62 @@ export const ReportGenerationImprovedContainer = ({ reportRequestIdParam }: Repo
     }
   };
 
-  if (!reportRequest) {
+  // Only show skeleton on initial load, not on subsequent refetches
+  if (!reportRequest && isInitialLoad && skeletonReady) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <div className="text-center">
-          <p className="text-muted-foreground">Cargando...</p>
+        <div className="space-y-8">
+          {/* Header Skeleton */}
+          <div>
+            <Skeleton className="h-9 w-64 mb-2" /> {/* Title */}
+            <Skeleton className="h-5 w-96" /> {/* Subtitle */}
+          </div>
+
+          {/* Main Content Skeleton - matches ReportGenerationWizard layout */}
+          <div className="space-y-6">
+            {/* Card Skeleton */}
+            <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
+              {/* Card Header */}
+              <div className="flex flex-col space-y-1.5 p-6">
+                <Skeleton className="h-6 w-48 mb-2" /> {/* Card title */}
+                <Skeleton className="h-4 w-full max-w-md" /> {/* Card description */}
+              </div>
+              
+              {/* Card Content */}
+              <div className="p-6 pt-0 space-y-6">
+                {/* Progress indicator area */}
+                <div className="space-y-4">
+                  <Skeleton className="h-2 w-full" /> {/* Progress bar */}
+                  <div className="flex items-center justify-center gap-2">
+                    <Skeleton className="h-4 w-4 rounded-full" /> {/* Icon */}
+                    <Skeleton className="h-4 w-32" /> {/* Status text */}
+                  </div>
+                </div>
+
+                {/* Step indicators */}
+                <div className="space-y-3">
+                  <Skeleton className="h-10 w-full" /> {/* Step 1 */}
+                  <Skeleton className="h-10 w-full" /> {/* Step 2 */}
+                  <Skeleton className="h-10 w-full" /> {/* Step 3 */}
+                  <Skeleton className="h-10 w-full" /> {/* Step 4 */}
+                </div>
+
+                {/* Buttons area */}
+                <div className="flex gap-2 pt-4">
+                  <Skeleton className="h-10 w-24" /> {/* Back button */}
+                  <Skeleton className="h-10 w-32" /> {/* Action button */}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );
+  }
+
+  // If not initial load and no data, just return null (shouldn't happen)
+  if (!reportRequest) {
+    return null;
   }
 
   return (
