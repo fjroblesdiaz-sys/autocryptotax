@@ -30,6 +30,8 @@ model ReportRequest {
 
   // Step 4: Report Generation
   status          String  @default("draft") // 'draft' | 'processing' | 'completed' | 'error'
+  progress        Int?    @default(0) // Progress percentage 0-100
+  progressMessage String? // Current step message (e.g., "Obteniendo transacciones...")
   generatedReport Json? // The structured report data
 
   // Cloudinary storage

@@ -165,7 +165,7 @@ export const ReportGenerationContainerNew = ({ reportRequestIdParam }: ReportGen
       await new Promise(resolve => setTimeout(resolve, 500));
 
       // Navigate to complete page
-      router.push(`/reports/complete?reportRequestId=${reportRequestIdParam}`);
+      // router.push(`/reports/complete?reportRequestId=${reportRequestIdParam}`);
 
     } catch (error) {
       console.error('[ReportGeneration] Polling error:', error);

@@ -9,6 +9,24 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+
+/**
+ * Helper function to update progress in database
+ */
+async function updateProgress(reportRequestId: string, progress: number, message: string) {
+  try {
+    await prisma.reportRequest.update({
+      where: { id: reportRequestId },
+      data: {
+        progress,
+        progressMessage: message,
+      },
+    });
+    console.log(`[Progress] ${progress}% - ${message}`);
+  } catch (error) {
+    console.error('[Progress] Failed to update progress:', error);
+  }
+}
 import { exchangeAPIService, ExchangeTransaction } from '@/features/reports/services/exchange-api.service';
 import { calculateTaxFIFO, ProcessedTransaction } from '@/features/reports/services/tax-calculation.service';
 import { generateModel100Report, formatModel100CSV, formatReportJSON } from '@/features/reports/services/report-format.service';
@@ -203,6 +221,7 @@ export async function POST(request: NextRequest) {
     // }
 
     // Step 1: Test API connection
+    await updateProgress(reportRequest.id, 15, 'Verificando credenciales del exchange...');
     console.log(`[API Route] Testing connection to ${validated.exchange}...`);
     console.log(`[API Route] API Key (first 8): ${validated.apiKey.substring(0, 8)}...`);
     
@@ -237,6 +256,7 @@ export async function POST(request: NextRequest) {
     console.log(`[API Route] Connection to ${validated.exchange} successful!`);
 
     // Step 2: Fetch transactions from exchange
+    await updateProgress(reportRequest.id, 25, `Obteniendo transacciones de ${validated.exchange}...`);
     console.log(`Fetching transactions from ${validated.exchange}...`);
     const exchangeTransactions = await exchangeAPIService.fetchTransactions(
       validated.exchange,
@@ -262,6 +282,7 @@ export async function POST(request: NextRequest) {
     console.log(`Found ${exchangeTransactions.length} transactions from ${validated.exchange}`);
 
     // Step 3: Convert to standard format
+    await updateProgress(reportRequest.id, 45, `Procesando ${exchangeTransactions.length} transacciones...`);
     const processedTransactions = await convertExchangeTransactions(exchangeTransactions);
     
     console.log(`[Exchange API] Converted ${processedTransactions.length} transactions:`);
@@ -273,6 +294,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Step 4: Calculate taxes using FIFO method
+    await updateProgress(reportRequest.id, 65, 'Calculando impuestos con método FIFO...');
     console.log(`[Exchange API] Calculating taxes for fiscal year ${validated.fiscalYear}`);
     console.log(`[Exchange API] Fiscal year range: ${validated.fiscalYear}-01-01 to ${validated.fiscalYear}-12-31`);
     
@@ -290,6 +312,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Step 5: Generate report in requested format
+    await updateProgress(reportRequest.id, 75, 'Generando documento del informe...');
     let report;
     let formattedOutput;
     let pdfBuffer: Buffer | null = null;
@@ -325,6 +348,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Step 6: Upload to Cloudinary
+    await updateProgress(reportRequest.id, 85, 'Subiendo archivo a Cloudinary...');
     console.log(`[API] Uploading report to Cloudinary...`);
     let cloudinaryResult = null;
     let fileBuffer: Buffer;
@@ -364,10 +388,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Step 7: Update database with final report data
+    await updateProgress(reportRequest.id, 95, 'Guardando en base de datos...');
     const updatedReportRequest = await prisma.reportRequest.update({
       where: { id: reportRequest.id },
       data: {
         status: 'completed',
+        progress: 100,
+        progressMessage: '¡Completado!',
         generatedReport: report as any, // Cast to any for Prisma Json field
         cloudinaryPublicId: cloudinaryResult.public_id,
         cloudinaryUrl: cloudinaryResult.secure_url,

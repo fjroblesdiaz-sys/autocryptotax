@@ -2,12 +2,13 @@
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Wallet, FileSpreadsheet, Edit, Key, ShieldCheck } from 'lucide-react';
+import { Wallet, FileSpreadsheet, Edit, Key, ShieldCheck, Loader2 } from 'lucide-react';
 import { DataSourceType } from '../types/reports.types';
 
 interface DataSourceSelectionProps {
   onSelect: (source: DataSourceType) => void;
   selectedSource?: DataSourceType;
+  isLoading?: boolean;
 }
 
 const dataSources = [
@@ -54,7 +55,7 @@ const dataSources = [
   },
 ];
 
-export const DataSourceSelection = ({ onSelect, selectedSource }: DataSourceSelectionProps) => {
+export const DataSourceSelection = ({ onSelect, selectedSource, isLoading = false }: DataSourceSelectionProps) => {
   return (
     <div className="space-y-4">
       <div>
@@ -68,18 +69,27 @@ export const DataSourceSelection = ({ onSelect, selectedSource }: DataSourceSele
         {dataSources.map((source) => {
           const Icon = source.icon;
           const isSelected = selectedSource === source.type;
-          const isDisabled = source.disabled;
+          const isDisabled = source.disabled || isLoading;
+          const isCurrentlyLoading = isSelected && isLoading;
 
           return (
             <Card
               key={source.type}
-              className={`transition-all ${
+              className={`transition-all relative ${
                 isDisabled 
                   ? 'opacity-60 cursor-not-allowed' 
                   : 'cursor-pointer hover:shadow-lg'
               } ${isSelected ? 'ring-2 ring-primary' : ''}`}
               onClick={() => !isDisabled && onSelect(source.type)}
             >
+              {isCurrentlyLoading && (
+                <div className="absolute inset-0 bg-background/80 backdrop-blur-sm rounded-lg flex items-center justify-center z-10">
+                  <div className="flex flex-col items-center gap-2">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <p className="text-sm text-muted-foreground">Creando solicitud...</p>
+                  </div>
+                </div>
+              )}
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">

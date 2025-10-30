@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { ReportGenerationWizard } from '@/features/reports/components/report-generation-wizard.component';
 import { ReportType } from '@/features/reports/types/reports.types';
 import { useReportRequest } from '@/features/reports/hooks/use-report-request.hook';
@@ -17,6 +17,7 @@ interface ReportConfigContainerProps {
 export const ReportConfigContainer = ({ reportRequestIdParam }: ReportConfigContainerProps) => {
   const router = useRouter();
   const { reportRequest, update, isLoading, error } = useReportRequest(reportRequestIdParam || undefined);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     // Validate that we have a report request ID
@@ -37,6 +38,7 @@ export const ReportConfigContainer = ({ reportRequestIdParam }: ReportConfigCont
   const handleGenerate = async (reportType: ReportType, year: number) => {
     console.log('[ReportConfig] Saving report config:', { reportType, year });
     
+    setIsSaving(true);
     try {
       // Update report request with configuration
       await update({
@@ -49,6 +51,7 @@ export const ReportConfigContainer = ({ reportRequestIdParam }: ReportConfigCont
     } catch (error) {
       console.error('[ReportConfig] Failed to update report request:', error);
       alert('Failed to save configuration. Please try again.');
+      setIsSaving(false);
     }
   };
 
@@ -99,7 +102,7 @@ export const ReportConfigContainer = ({ reportRequestIdParam }: ReportConfigCont
         <ReportGenerationWizard
           onGenerate={handleGenerate}
           onBack={handleBack}
-          isGenerating={isLoading}
+          isGenerating={isSaving}
           generationProgress={0}
         />
       </div>

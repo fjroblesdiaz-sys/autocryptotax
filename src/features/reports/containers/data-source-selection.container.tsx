@@ -52,14 +52,8 @@ export const DataSourceSelectionContainer = () => {
         <DataSourceSelection
           onSelect={handleSelectDataSource}
           selectedSource={selectedSource}
+          isLoading={isLoading}
         />
-
-        {/* Loading State */}
-        {isLoading && (
-          <div className="text-center text-muted-foreground">
-            Creando solicitud de informe...
-          </div>
-        )}
       </div>
     </div>
   );

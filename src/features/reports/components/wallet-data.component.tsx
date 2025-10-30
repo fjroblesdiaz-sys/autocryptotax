@@ -8,7 +8,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { Calendar as CalendarIcon, CheckCircle2, Wallet } from 'lucide-react';
+import { Calendar as CalendarIcon, CheckCircle2, Wallet, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { WalletData } from '../types/reports.types';
@@ -18,13 +18,16 @@ interface WalletDataProps {
   address: string;
   onSubmit: (data: WalletData) => void;
   onBack: () => void;
+  isSubmitting?: boolean;
 }
 
-export const WalletDataComponent = ({ address, onSubmit, onBack }: WalletDataProps) => {
+export const WalletDataComponent = ({ address, onSubmit, onBack, isSubmitting = false }: WalletDataProps) => {
   const [dateFrom, setDateFrom] = useState<Date>();
   const [dateTo, setDateTo] = useState<Date>();
 
   const handleSubmit = () => {
+    if (isSubmitting) return; // Prevent double submission
+    
     const data: WalletData = {
       address,
       ...(dateFrom && dateTo && {
@@ -162,11 +165,18 @@ export const WalletDataComponent = ({ address, onSubmit, onBack }: WalletDataPro
 
           {/* Submit Button */}
           <div className="flex justify-end gap-2 pt-4">
-            <Button variant="outline" onClick={onBack}>
+            <Button variant="outline" onClick={onBack} disabled={isSubmitting}>
               Cancelar
             </Button>
-            <Button onClick={handleSubmit}>
-              Continuar con esta Cartera
+            <Button onClick={handleSubmit} disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Guardando...
+                </>
+              ) : (
+                'Continuar con esta Cartera'
+              )}
             </Button>
           </div>
         </CardContent>

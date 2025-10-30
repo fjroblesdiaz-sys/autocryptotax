@@ -33,6 +33,7 @@ export const DataInputContainer = ({ sourceParam, reportRequestIdParam }: DataIn
   const { reportRequest, update, isLoading, error } = useReportRequest(reportRequestIdParam || undefined);
   
   const [source, setSource] = useState<DataSourceType | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (!sourceParam || !reportRequestIdParam) {
@@ -54,6 +55,7 @@ export const DataInputContainer = ({ sourceParam, reportRequestIdParam }: DataIn
   ) => {
     console.log('[DataInput] Submitting data:', data);
     
+    setIsSubmitting(true);
     try {
       // Update report request with source data
       await update({
@@ -65,6 +67,7 @@ export const DataInputContainer = ({ sourceParam, reportRequestIdParam }: DataIn
     } catch (error) {
       console.error('[DataInput] Failed to update report request:', error);
       alert('Failed to save data. Please try again.');
+      setIsSubmitting(false);
     }
   };
 
@@ -100,6 +103,7 @@ export const DataInputContainer = ({ sourceParam, reportRequestIdParam }: DataIn
             address={address}
             onSubmit={(data: WalletData) => handleSubmit(data)}
             onBack={handleBack}
+            isSubmitting={isSubmitting}
           />
         )}
 
@@ -114,6 +118,7 @@ export const DataInputContainer = ({ sourceParam, reportRequestIdParam }: DataIn
           <APIKeyConfig
             onSubmit={(data: APIKeyData) => handleSubmit(data)}
             onBack={handleBack}
+            isSubmitting={isSubmitting}
           />
         )}
 

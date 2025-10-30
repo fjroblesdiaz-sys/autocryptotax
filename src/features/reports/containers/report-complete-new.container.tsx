@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { CheckCircle2, Download, FileText, AlertCircle } from 'lucide-react';
+import { CheckCircle2, Download, FileText, AlertCircle, Loader2 } from 'lucide-react';
 import { useReportRequest } from '@/features/reports/hooks/use-report-request.hook';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -253,8 +253,17 @@ export const ReportCompleteContainerNew = ({ reportRequestIdParam }: ReportCompl
             size="lg"
             className="gap-2"
           >
-            <Download className="h-4 w-4" />
-            {isDownloading ? 'Descargando...' : 'Descargar Informe'}
+            {isDownloading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Descargando...
+              </>
+            ) : (
+              <>
+                <Download className="h-4 w-4" />
+                Descargar Informe
+              </>
+            )}
           </Button>
           
           <Button

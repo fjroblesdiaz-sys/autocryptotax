@@ -7,15 +7,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Eye, EyeOff, Shield, AlertTriangle } from 'lucide-react';
+import { Eye, EyeOff, Shield, AlertTriangle, Loader2 } from 'lucide-react';
 import { ExchangePlatform, APIKeyData } from '../types/reports.types';
 
 interface APIKeyConfigProps {
   onSubmit: (data: APIKeyData) => void;
   onBack: () => void;
+  isSubmitting?: boolean;
 }
 
-export const APIKeyConfig = ({ onSubmit, onBack }: APIKeyConfigProps) => {
+export const APIKeyConfig = ({ onSubmit, onBack, isSubmitting = false }: APIKeyConfigProps) => {
   const [platform, setPlatform] = useState<ExchangePlatform>('binance');
   const [apiKey, setApiKey] = useState('');
   const [apiSecret, setApiSecret] = useState('');
@@ -28,6 +29,7 @@ export const APIKeyConfig = ({ onSubmit, onBack }: APIKeyConfigProps) => {
   const handleSubmit = () => {
     if (!apiKey || !apiSecret) return;
     if (requiresPassphrase && !passphrase) return;
+    if (isSubmitting) return; // Prevent double submission
 
     const data: APIKeyData = {
       platform,
@@ -164,14 +166,21 @@ export const APIKeyConfig = ({ onSubmit, onBack }: APIKeyConfigProps) => {
 
           {/* Submit Button */}
           <div className="flex justify-end gap-2 pt-4">
-            <Button variant="outline" onClick={onBack}>
+            <Button variant="outline" onClick={onBack} disabled={isSubmitting}>
               Cancelar
             </Button>
             <Button 
               onClick={handleSubmit} 
-              disabled={!apiKey || !apiSecret || (requiresPassphrase && !passphrase)}
+              disabled={!apiKey || !apiSecret || (requiresPassphrase && !passphrase) || isSubmitting}
             >
-              Conectar API
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Guardando...
+                </>
+              ) : (
+                'Conectar API'
+              )}
             </Button>
           </div>
         </CardContent>

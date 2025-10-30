@@ -2,7 +2,7 @@
 
 import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { ReportGenerationContainerNew } from '@/features/reports/containers/report-generation-new.container';
+import { ReportGenerationImprovedContainer } from '@/features/reports/containers/report-generation-improved.container';
 
 /**
  * Inner component that uses useSearchParams
@@ -10,13 +10,12 @@ import { ReportGenerationContainerNew } from '@/features/reports/containers/repo
 function GeneratePageInner() {
   const searchParams = useSearchParams();
   const reportRequestIdParam = searchParams.get('reportRequestId');
-  return <ReportGenerationContainerNew reportRequestIdParam={reportRequestIdParam} />;
+  return <ReportGenerationImprovedContainer reportRequestIdParam={reportRequestIdParam} />;
 }
 
 /**
  * Report Generation Page
- * Shows progress while generating the report
- * Polls database for status updates
+ * Shows progress while generating the report with real-time SSE updates
  */
 export default function GeneratePage() {
   return (
