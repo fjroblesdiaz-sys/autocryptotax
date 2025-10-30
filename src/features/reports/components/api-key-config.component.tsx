@@ -59,8 +59,6 @@ export const APIKeyConfig = ({ onSubmit, onBack }: APIKeyConfigProps) => {
         <AlertDescription>
           Tus claves API se almacenan de forma segura y encriptada. Solo se utilizan para obtener
           tu historial de transacciones. Asegúrate de crear una API key con permisos de solo lectura.
-          <br /><br />
-          <strong>Modo Demo:</strong> Para probar sin API real, usa &quot;test&quot; como API Key y Secret.
         </AlertDescription>
       </Alert>
 
