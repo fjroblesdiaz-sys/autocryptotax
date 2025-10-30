@@ -53,7 +53,7 @@ export const ReportCompleteContainerNew = ({ reportRequestIdParam }: ReportCompl
   }, [reportRequest, reportRequestIdParam, router]);
 
   const handleDownload = async () => {
-    if (!reportRequest || !reportRequest.cloudinaryUrl) {
+    if (!reportRequest) {
       alert('No hay archivo disponible para descargar');
       return;
     }
@@ -61,13 +61,41 @@ export const ReportCompleteContainerNew = ({ reportRequestIdParam }: ReportCompl
     setIsDownloading(true);
 
     try {
-      // Use the download API endpoint which will redirect to Cloudinary
+      console.log('[ReportComplete] Downloading report...');
+      
+      // Option 1: Use API endpoint (proxies through our server, avoids CORS)
+      // This is more reliable and works in all cases
       const downloadUrl = `/api/reports/download/${reportRequestIdParam}`;
       
-      // Open in new tab to trigger download
-      window.open(downloadUrl, '_blank');
+      // Fetch the file through our API
+      const response = await fetch(downloadUrl);
+      
+      if (!response.ok) {
+        throw new Error('Failed to download file');
+      }
 
-      console.log('[ReportComplete] Download initiated');
+      // Get the blob
+      const blob = await response.blob();
+      
+      // Create a download link
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      
+      // Determine filename based on report type and format
+      const extension = reportRequest.fileFormat || 'pdf';
+      const filename = `informe-${reportRequest.reportType}-${reportRequest.fiscalYear}.${extension}`;
+      link.download = filename;
+      
+      // Trigger download
+      document.body.appendChild(link);
+      link.click();
+      
+      // Cleanup
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      console.log('[ReportComplete] Download completed successfully');
     } catch (error) {
       console.error('[ReportComplete] Download error:', error);
       alert('Error al descargar el informe. Por favor, inténtalo de nuevo.');

@@ -41,6 +41,8 @@ export async function uploadReportToCloudinary(
   const dataURI = `data:${getMimeType(format)};base64,${base64Data}`;
 
   try {
+    // Upload with type: 'authenticated' for secure delivery with signed URLs
+    // This works even if PDF delivery is restricted in settings
     const result = await cloudinary.uploader.upload(dataURI, {
       public_id: publicId,
       resource_type: resourceType,
@@ -48,9 +50,14 @@ export async function uploadReportToCloudinary(
       overwrite: true,
       invalidate: true,
       tags: [reportType, `year-${fiscalYear}`, 'tax-report'],
+      type: 'authenticated', // Use authenticated type for secure signed URLs
     });
 
     console.log(`[Cloudinary] Successfully uploaded report: ${publicId}`);
+    console.log(`[Cloudinary] Secure URL: ${result.secure_url}`);
+    console.log(`[Cloudinary] Resource type: ${result.resource_type}`);
+    console.log(`[Cloudinary] Format: ${result.format}`);
+    
     return result;
   } catch (error) {
     console.error('[Cloudinary] Upload error:', error);
@@ -88,6 +95,32 @@ function getMimeType(format: string): string {
       return 'application/json';
     default:
       return 'application/octet-stream';
+  }
+}
+
+/**
+ * Generate a signed download URL for a Cloudinary authenticated file
+ * This creates an authenticated URL with proper signature
+ */
+export function getCloudinaryDownloadUrl(publicId: string, resourceType: string = 'raw'): string {
+  try {
+    // Generate signed URL for authenticated files
+    // This includes signature for secure access
+    const signedUrl = cloudinary.url(publicId, {
+      resource_type: resourceType,
+      type: 'authenticated', // Must match upload type
+      sign_url: true, // Generate signature
+      secure: true, // Use HTTPS
+      flags: 'attachment', // Force download
+      attachment: true, // Alternative way to force download
+    });
+    
+    console.log('[Cloudinary] Generated authenticated signed URL for:', publicId);
+    console.log('[Cloudinary] URL:', signedUrl);
+    return signedUrl;
+  } catch (error) {
+    console.error('[Cloudinary] Failed to generate signed URL:', error);
+    throw new Error(`Failed to generate Cloudinary signed URL: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 
