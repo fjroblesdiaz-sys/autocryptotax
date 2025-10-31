@@ -22,9 +22,8 @@ async function updateProgress(reportRequestId: string, progress: number, message
         progressMessage: message,
       },
     });
-    console.log(`[Progress] ${progress}% - ${message}`);
   } catch (error) {
-    console.error('[Progress] Failed to update progress:', error);
+    // Silent error handling - progress updates are non-critical
   }
 }
 import { exchangeAPIService, ExchangeTransaction } from '@/features/reports/services/exchange-api.service';
@@ -64,8 +63,6 @@ type GenerateReportRequest = z.infer<typeof GenerateReportSchema>;
 async function convertExchangeTransactions(
   exchangeTransactions: ExchangeTransaction[]
 ): Promise<ProcessedTransaction[]> {
-  console.log(`[Exchange API] Converting ${exchangeTransactions.length} transactions to ProcessedTransaction format`);
-  
   // Get unique assets that need pricing
   const assetsNeedingPrices = new Set<string>();
   exchangeTransactions.forEach(tx => {
@@ -80,10 +77,8 @@ async function convertExchangeTransactions(
   // Fetch current prices for all assets that need them
   const prices = new Map<string, number>();
   if (assetsNeedingPrices.size > 0) {
-    console.log(`[Exchange API] Fetching current prices for ${assetsNeedingPrices.size} assets...`);
     const fetchedPrices = await priceAPIService.getPricesInEUR(Array.from(assetsNeedingPrices));
     fetchedPrices.forEach((price, symbol) => prices.set(symbol, price));
-    console.log(`[Exchange API] Fetched prices for assets:`, Array.from(prices.keys()).join(', '));
   }
   
   return exchangeTransactions.map((tx) => {
@@ -191,7 +186,6 @@ export async function POST(request: NextRequest) {
           fileFormat: validated.format,
         },
       });
-      console.log(`[API] Updated existing report request: ${reportRequest.id}`);
     } else {
       // Create new report request
       reportRequest = await prisma.reportRequest.create({
@@ -211,7 +205,6 @@ export async function POST(request: NextRequest) {
           fileFormat: validated.format,
         },
       });
-      console.log(`[API] Created new report request: ${reportRequest.id}`);
     }
 
     // TODO: Add authentication/API key validation for production
@@ -222,8 +215,6 @@ export async function POST(request: NextRequest) {
 
     // Step 1: Test API connection
     await updateProgress(reportRequest.id, 15, 'Verificando credenciales del exchange...');
-    console.log(`[API Route] Testing connection to ${validated.exchange}...`);
-    console.log(`[API Route] API Key (first 8): ${validated.apiKey.substring(0, 8)}...`);
     
     let isValidConnection = false;
     let connectionError = null;
@@ -239,7 +230,6 @@ export async function POST(request: NextRequest) {
       );
     } catch (err) {
       connectionError = err instanceof Error ? err.message : 'Unknown error';
-      console.error(`[API Route] Connection test threw error:`, connectionError);
     }
 
     if (!isValidConnection) {
@@ -253,11 +243,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`[API Route] Connection to ${validated.exchange} successful!`);
-
     // Step 2: Fetch transactions from exchange
     await updateProgress(reportRequest.id, 25, `Obteniendo transacciones de ${validated.exchange}...`);
-    console.log(`Fetching transactions from ${validated.exchange}...`);
     const exchangeTransactions = await exchangeAPIService.fetchTransactions(
       validated.exchange,
       {
@@ -279,37 +266,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`Found ${exchangeTransactions.length} transactions from ${validated.exchange}`);
-
     // Step 3: Convert to standard format
     await updateProgress(reportRequest.id, 45, `Procesando ${exchangeTransactions.length} transacciones...`);
     const processedTransactions = await convertExchangeTransactions(exchangeTransactions);
-    
-    console.log(`[Exchange API] Converted ${processedTransactions.length} transactions:`);
-    processedTransactions.slice(0, 5).forEach((tx, i) => {
-      console.log(`  [${i}] ${tx.date.toISOString()} - ${tx.type} ${tx.amount} ${tx.asset} @ €${tx.priceEUR}`);
-    });
-    if (processedTransactions.length > 5) {
-      console.log(`  ... and ${processedTransactions.length - 5} more`);
-    }
 
     // Step 4: Calculate taxes using FIFO method
     await updateProgress(reportRequest.id, 65, 'Calculando impuestos con método FIFO...');
-    console.log(`[Exchange API] Calculating taxes for fiscal year ${validated.fiscalYear}`);
-    console.log(`[Exchange API] Fiscal year range: ${validated.fiscalYear}-01-01 to ${validated.fiscalYear}-12-31`);
     
     const taxCalculation = calculateTaxFIFO(
       processedTransactions,
       validated.fiscalYear
     );
-    
-    console.log(`[Exchange API] Tax calculation complete:`, {
-      totalTransactions: taxCalculation.transactions.length,
-      totalGains: taxCalculation.summary.totalGains,
-      totalLosses: taxCalculation.summary.totalLosses,
-      netResult: taxCalculation.summary.netResult,
-      capitalGains: taxCalculation.capitalGains.length,
-    });
 
     // Step 5: Generate report in requested format
     await updateProgress(reportRequest.id, 75, 'Generando documento del informe...');
@@ -333,10 +300,7 @@ export async function POST(request: NextRequest) {
     );
     
     if (validated.format === 'csv') {
-      console.log('[API] Generating CSV with taxCalculation containing', taxCalculation.transactions.length, 'transactions');
       formattedOutput = formatModel100CSV(report, taxCalculation);
-      console.log('[API] CSV generated, length:', formattedOutput.length, 'chars');
-      console.log('[API] CSV preview (first 500 chars):', formattedOutput.substring(0, 500));
     } else if (validated.format === 'pdf') {
       // Generate PDF
       pdfBuffer = await generateModel100PDF(report, taxCalculation, {
@@ -349,7 +313,6 @@ export async function POST(request: NextRequest) {
 
     // Step 6: Upload to Cloudinary
     await updateProgress(reportRequest.id, 85, 'Subiendo archivo a Cloudinary...');
-    console.log(`[API] Uploading report to Cloudinary...`);
     let cloudinaryResult = null;
     let fileBuffer: Buffer;
 
@@ -368,9 +331,7 @@ export async function POST(request: NextRequest) {
         fiscalYear: validated.fiscalYear,
         reportType: validated.reportType,
       });
-      console.log(`[API] Successfully uploaded to Cloudinary: ${cloudinaryResult.secure_url}`);
     } catch (cloudinaryError) {
-      console.error('[API] Cloudinary upload failed:', cloudinaryError);
       // Continue even if Cloudinary fails - update status to error
       await prisma.reportRequest.update({
         where: { id: reportRequest.id },
@@ -405,15 +366,6 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    console.log(`[API] Report generation completed successfully:`, {
-      reportRequestId: reportRequest.id,
-      cloudinaryUrl: cloudinaryResult.secure_url,
-      transactionCount: exchangeTransactions.length,
-      totalGains: taxCalculation.summary.totalGains,
-      totalLosses: taxCalculation.summary.totalLosses,
-      netResult: taxCalculation.summary.netResult,
-    });
-
     // Return success response with report request info
     return NextResponse.json({
       success: true,
@@ -429,8 +381,6 @@ export async function POST(request: NextRequest) {
     }, { status: 200 });
 
   } catch (error) {
-    console.error('Error generating report from exchange:', error);
-
     // Update report request status to error if we have a reportRequest
     if (reportRequest) {
       try {
@@ -442,7 +392,7 @@ export async function POST(request: NextRequest) {
           },
         });
       } catch (dbError) {
-        console.error('Failed to update report request status:', dbError);
+        // Silent error handling
       }
     }
 

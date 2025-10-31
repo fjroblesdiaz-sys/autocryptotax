@@ -64,7 +64,6 @@ export async function POST(request: NextRequest) {
           fileFormat: validated.format,
         },
       });
-      console.log(`[API] Updated existing report request: ${reportRequest.id}`);
     } else {
       reportRequest = await prisma.reportRequest.create({
         data: {
@@ -83,7 +82,6 @@ export async function POST(request: NextRequest) {
           fileFormat: validated.format,
         },
       });
-      console.log(`[API] Created new report request: ${reportRequest.id}`);
     }
 
     // TODO: Add authentication/API key validation for production
@@ -93,7 +91,6 @@ export async function POST(request: NextRequest) {
     // }
 
     // Step 1: Fetch blockchain transactions
-    console.log(`Fetching transactions for wallet: ${validated.walletAddress}`);
     const transactionData = await fetchWalletTransactions(
       validated.walletAddress,
       validated.chain,
@@ -108,7 +105,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Step 2: Process transactions (categorize, get prices, etc.)
-    console.log(`Processing ${transactionData.transactions.length} transactions`);
     const pricesMap = new Map(); // TODO: Fetch actual historical prices
     const processedTransactions = processBlockchainTransactions(
       transactionData.transactions,
@@ -117,7 +113,6 @@ export async function POST(request: NextRequest) {
     );
 
     // Step 3: Calculate taxes using FIFO method
-    console.log(`Calculating taxes for fiscal year ${validated.fiscalYear}`);
     const taxCalculation = calculateTaxFIFO(
       processedTransactions,
       validated.fiscalYear
@@ -170,7 +165,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Step 5: Upload to Cloudinary
-    console.log(`[API] Uploading report to Cloudinary...`);
     let cloudinaryResult = null;
     let fileBuffer: Buffer;
 
@@ -189,9 +183,7 @@ export async function POST(request: NextRequest) {
         fiscalYear: validated.fiscalYear,
         reportType: validated.reportType,
       });
-      console.log(`[API] Successfully uploaded to Cloudinary: ${cloudinaryResult.secure_url}`);
     } catch (cloudinaryError) {
-      console.error('[API] Cloudinary upload failed:', cloudinaryError);
       await prisma.reportRequest.update({
         where: { id: reportRequest.id },
         data: {
@@ -222,11 +214,6 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    console.log(`[API] Report generation completed successfully:`, {
-      reportRequestId: reportRequest.id,
-      cloudinaryUrl: cloudinaryResult.secure_url,
-    });
-
     // Return success response
     return NextResponse.json({
       success: true,
@@ -245,8 +232,6 @@ export async function POST(request: NextRequest) {
     }, { status: 200 });
 
   } catch (error) {
-    console.error('Error generating report:', error);
-
     // Update report request status to error if we have a reportRequest
     if (reportRequest) {
       try {
@@ -258,7 +243,7 @@ export async function POST(request: NextRequest) {
           },
         });
       } catch (dbError) {
-        console.error('Failed to update report request status:', dbError);
+        // Silent error handling
       }
     }
 

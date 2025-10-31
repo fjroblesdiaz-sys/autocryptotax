@@ -25,6 +25,80 @@ export interface PDFGenerationOptions {
   includeDetailedBreakdown?: boolean; // Include full transaction-by-transaction breakdown
 }
 
+// Layout system and style tokens
+const PAGE_DIMENSIONS = { width: 595.28, height: 841.89 }; // A4 in points
+const MARGINS = { top: 60, right: 50, bottom: 50, left: 50 };
+const CONTENT = {
+  x: MARGINS.left,
+  width: PAGE_DIMENSIONS.width - MARGINS.left - MARGINS.right,
+};
+
+const SPACING = { xs: 6, sm: 10, md: 14, lg: 20, xl: 28 };
+const TYPE_SIZE = { h1: 22, h2: 12, body: 9, small: 8 };
+const COLORS = {
+  text: rgb(0.1, 0.1, 0.1),
+  muted: rgb(0.4, 0.4, 0.4),
+  primary: rgb(0.2, 0.4, 0.8),
+  primaryDark: rgb(0.1, 0.2, 0.4),
+  headerBlue: rgb(0.25, 0.45, 0.85),
+  headerGreen: rgb(0.15, 0.6, 0.45),
+  zebra: rgb(0.98, 0.98, 0.98),
+  boxBg: rgb(0.98, 0.99, 1),
+  boxShadow: rgb(0.85, 0.85, 0.85),
+};
+
+function newPage(pdfDoc: PDFDocument): PDFPage {
+  return pdfDoc.addPage([PAGE_DIMENSIONS.width, PAGE_DIMENSIONS.height]);
+}
+
+function startY(): number {
+  return PAGE_DIMENSIONS.height - MARGINS.top;
+}
+
+function drawSectionTitle(page: PDFPage, title: string, y: number, font: PDFFont): number {
+  page.drawRectangle({ x: CONTENT.x - 5, y: y - 2, width: 5, height: 18, color: COLORS.primary });
+  page.drawText(title, { x: CONTENT.x + 5, y, size: TYPE_SIZE.h2, font, color: COLORS.text });
+  return y - SPACING.lg;
+}
+
+function wrapText(font: PDFFont, text: string, size: number, maxWidth: number): string[] {
+  if (!text) return [];
+  const words = text.split(/\s+/);
+  const lines: string[] = [];
+  let current = '';
+  for (const word of words) {
+    const test = current ? current + ' ' + word : word;
+    const width = font.widthOfTextAtSize(test, size);
+    if (width <= maxWidth) {
+      current = test;
+    } else {
+      if (current) lines.push(current);
+      current = word;
+    }
+  }
+  if (current) lines.push(current);
+  return lines;
+}
+
+function drawTextWrapped(
+  page: PDFPage,
+  font: PDFFont,
+  text: string,
+  x: number,
+  y: number,
+  size: number,
+  color: ReturnType<typeof rgb>,
+  maxWidth: number
+): number {
+  const lines = wrapText(font, text, size, maxWidth);
+  let cursorY = y;
+  for (const line of lines) {
+    page.drawText(line, { x, y: cursorY, size, font, color });
+    cursorY -= size + 3;
+  }
+  return cursorY;
+}
+
 /**
  * Generate PDF for Modelo 100 (IRPF)
  */
@@ -49,18 +123,18 @@ export async function generateModel100PDF(
     const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
     
     // Add first page
-    let page = pdfDoc.addPage([595.28, 841.89]); // A4 size in points
-    let yPosition = 800;
+    let page = newPage(pdfDoc);
+    let yPosition = startY();
 
-    // Add watermark if specified
+    // Add professional watermark if specified
     if (options.includeWatermark !== false) {
       page.drawText('DOCUMENTO INFORMATIVO', {
-        x: 150,
-        y: 400,
-        size: 40,
+        x: 100,
+        y: 420,
+        size: 48,
         font: helveticaBold,
-        color: rgb(1, 0, 0),
-        opacity: 0.1,
+        color: rgb(0.2, 0.4, 0.8),
+        opacity: 0.05,
         rotate: degrees(-45),
       });
     }
@@ -79,8 +153,8 @@ export async function generateModel100PDF(
 
     // All Transactions - Complete List
     if (yPosition < 250) {
-      page = pdfDoc.addPage([595.28, 841.89]);
-      yPosition = 800;
+      page = newPage(pdfDoc);
+      yPosition = startY();
     }
     const result = drawAllTransactions(pdfDoc, page, report.data as Model100Data, taxCalculation, helveticaBold, helveticaFont, yPosition);
     page = result.page;
@@ -88,22 +162,22 @@ export async function generateModel100PDF(
 
     // Capital Gains Detail
     if (yPosition < 250) {
-      page = pdfDoc.addPage([595.28, 841.89]);
-      yPosition = 800;
+      page = newPage(pdfDoc);
+      yPosition = startY();
     }
     const result2 = drawCapitalGainsDetail(pdfDoc, page, report.data as Model100Data, taxCalculation, helveticaBold, helveticaFont, yPosition);
     page = result2.page;
     yPosition = result2.yPosition;
 
     // Calculation methodology example on new page
-    page = pdfDoc.addPage([595.28, 841.89]);
-    yPosition = 800;
+    page = newPage(pdfDoc);
+    yPosition = startY();
     yPosition = drawCalculationMethodology(page, helveticaBold, helveticaFont, yPosition);
 
     // Instructions on new page (or continue if space available)
     if (yPosition < 200) {
-      page = pdfDoc.addPage([595.28, 841.89]);
-      yPosition = 800;
+      page = newPage(pdfDoc);
+      yPosition = startY();
     }
     drawModel100Instructions(pdfDoc, page, helveticaBold, helveticaFont, yPosition);
 
@@ -272,24 +346,41 @@ function drawModel100Summary(
   regularFont: PDFFont,
   yPosition: number
 ): number {
+  // Section title with accent bar
+  page.drawRectangle({
+    x: 45,
+    y: yPosition - 2,
+    width: 5,
+    height: 18,
+    color: rgb(0.2, 0.4, 0.8),
+  });
+
   page.drawText('RESUMEN DE GANANCIAS Y PERDIDAS PATRIMONIALES', {
-    x: 50,
+    x: 55,
     y: yPosition,
     size: 12,
     font: boldFont,
-    color: rgb(0, 0, 0),
+    color: rgb(0.1, 0.1, 0.1),
   });
-  yPosition -= 25;
+  yPosition -= 30;
 
-  // Draw summary box background
+  // Draw professional summary box background with shadow effect
+  page.drawRectangle({
+    x: 52,
+    y: yPosition - 112,
+    width: 495,
+    height: 120,
+    color: rgb(0.85, 0.85, 0.85),
+  });
+
   page.drawRectangle({
     x: 50,
     y: yPosition - 110,
     width: 495,
     height: 120,
-    color: rgb(0.96, 0.96, 0.96),
-    borderColor: rgb(0.8, 0.8, 0.8),
-    borderWidth: 1,
+    color: rgb(0.98, 0.98, 1),
+    borderColor: rgb(0.3, 0.5, 0.9),
+    borderWidth: 2,
   });
 
   yPosition -= 15;
@@ -392,14 +483,23 @@ function drawAllTransactions(
   regularFont: PDFFont,
   yPosition: number
 ): { page: PDFPage; yPosition: number } {
+  // Section title with accent bar
+  page.drawRectangle({
+    x: 45,
+    y: yPosition - 2,
+    width: 5,
+    height: 18,
+    color: rgb(0.2, 0.4, 0.8),
+  });
+
   page.drawText('TODAS LAS TRANSACCIONES', {
-    x: 50,
+    x: 55,
     y: yPosition,
     size: 12,
     font: boldFont,
-    color: rgb(0, 0, 0),
+    color: rgb(0.1, 0.1, 0.1),
   });
-  yPosition -= 20;
+  yPosition -= 25;
 
   if (!taxCalculation.transactions || taxCalculation.transactions.length === 0) {
     page.drawText('No hay transacciones para mostrar.', {
@@ -418,29 +518,27 @@ function drawAllTransactions(
   const colWidths = [65, 60, 60, 60, 60, 70, 70];
   let xPos = 50;
 
-  // Draw header background
+  // Draw professional header background (more height to avoid clipping)
   page.drawRectangle({
     x: 45,
-    y: yPosition - 15,
+    y: yPosition - 14,
     width: 500,
-    height: 18,
-    color: rgb(0.9, 0.9, 0.9),
-    borderColor: rgb(0.7, 0.7, 0.7),
-    borderWidth: 0.5,
+    height: 22,
+    color: rgb(0.25, 0.45, 0.85),
   });
 
   headers.forEach((header, i) => {
     page.drawText(header, {
       x: xPos,
-      y: yPosition,
+      y: yPosition - 6, // vertically center text in header bar
       size: 8,
       font: boldFont,
-      color: rgb(0, 0, 0),
+      color: rgb(1, 1, 1), // White text on blue background
     });
     xPos += colWidths[i];
   });
 
-  yPosition -= 20;
+  yPosition -= 26;
 
   // Add all transactions
   let transactionCount = 0;
@@ -448,7 +546,7 @@ function drawAllTransactions(
     // Check if we need a new page
     if (yPosition < 80) {
       page = pdfDoc.addPage([595.28, 841.89]);
-      yPosition = 780;
+      yPosition = startY() - 20;
       
       // Redraw headers on new page
       page.drawText('TODAS LAS TRANSACCIONES (continuación)', {
@@ -462,26 +560,24 @@ function drawAllTransactions(
 
       page.drawRectangle({
         x: 45,
-        y: yPosition - 15,
+        y: yPosition - 14,
         width: 500,
-        height: 18,
-        color: rgb(0.9, 0.9, 0.9),
-        borderColor: rgb(0.7, 0.7, 0.7),
-        borderWidth: 0.5,
+        height: 22,
+        color: rgb(0.25, 0.45, 0.85),
       });
 
       xPos = 50;
       headers.forEach((header, i) => {
         page.drawText(header, {
           x: xPos,
-          y: yPosition,
+          y: yPosition - 6,
           size: 8,
           font: boldFont,
-          color: rgb(0, 0, 0),
+          color: rgb(1, 1, 1),
         });
         xPos += colWidths[i];
       });
-      yPosition -= 20;
+      yPosition -= 26;
     }
 
     xPos = 50;
@@ -567,14 +663,23 @@ function drawCapitalGainsDetail(
   regularFont: PDFFont,
   yPosition: number
 ): { page: PDFPage; yPosition: number } {
+  // Section title with accent bar
+  page.drawRectangle({
+    x: 45,
+    y: yPosition - 2,
+    width: 5,
+    height: 18,
+    color: rgb(0.2, 0.4, 0.8),
+  });
+
   page.drawText('DETALLE DE GANANCIAS Y PERDIDAS PATRIMONIALES', {
-    x: 50,
+    x: 55,
     y: yPosition,
     size: 12,
     font: boldFont,
-    color: rgb(0, 0, 0),
+    color: rgb(0.1, 0.1, 0.1),
   });
-  yPosition -= 20;
+  yPosition -= 25;
 
   const allGains = [...data.capitalGains.shortTerm, ...data.capitalGains.longTerm];
 
@@ -595,29 +700,27 @@ function drawCapitalGainsDetail(
   const colWidths = [65, 65, 65, 80, 80, 90];
   let xPos = 50;
 
-  // Draw header background
+  // Draw professional header background
   page.drawRectangle({
     x: 45,
-    y: yPosition - 15,
+    y: yPosition - 14,
     width: 500,
-    height: 18,
-    color: rgb(0.9, 0.9, 0.9),
-    borderColor: rgb(0.7, 0.7, 0.7),
-    borderWidth: 0.5,
+    height: 22,
+    color: rgb(0.15, 0.6, 0.45),
   });
 
   headers.forEach((header, i) => {
     page.drawText(header, {
       x: xPos,
-      y: yPosition,
+      y: yPosition - 6,
       size: 8,
       font: boldFont,
-      color: rgb(0, 0, 0),
+      color: rgb(1, 1, 1), // White text on green background
     });
     xPos += colWidths[i];
   });
 
-  yPosition -= 20;
+  yPosition -= 26;
 
   // Add all gains entries with pagination
   let gainCount = 0;
@@ -625,7 +728,7 @@ function drawCapitalGainsDetail(
     // Check if we need a new page
     if (yPosition < 80) {
       page = pdfDoc.addPage([595.28, 841.89]);
-      yPosition = 780;
+      yPosition = startY() - 20;
       
       // Redraw headers on new page
       page.drawText('DETALLE DE GANANCIAS Y PERDIDAS (continuación)', {
@@ -639,26 +742,24 @@ function drawCapitalGainsDetail(
 
       page.drawRectangle({
         x: 45,
-        y: yPosition - 15,
+        y: yPosition - 14,
         width: 500,
-        height: 18,
-        color: rgb(0.9, 0.9, 0.9),
-        borderColor: rgb(0.7, 0.7, 0.7),
-        borderWidth: 0.5,
+        height: 22,
+        color: rgb(0.15, 0.6, 0.45),
       });
 
       xPos = 50;
       headers.forEach((header, i) => {
         page.drawText(header, {
           x: xPos,
-          y: yPosition,
+          y: yPosition - 6,
           size: 8,
           font: boldFont,
-          color: rgb(0, 0, 0),
+          color: rgb(1, 1, 1),
         });
         xPos += colWidths[i];
       });
-      yPosition -= 20;
+      yPosition -= 26;
     }
 
     xPos = 50;
@@ -733,24 +834,41 @@ function drawCalculationMethodology(
   regularFont: PDFFont,
   yPosition: number
 ): number {
+  // Section title with accent bar
+  page.drawRectangle({
+    x: 45,
+    y: yPosition - 2,
+    width: 5,
+    height: 18,
+    color: rgb(0.2, 0.4, 0.8),
+  });
+
   page.drawText('METODOLOGIA DE CALCULO - METODO FIFO', {
-    x: 50,
+    x: 55,
     y: yPosition,
     size: 12,
     font: boldFont,
-    color: rgb(0, 0, 0),
+    color: rgb(0.1, 0.1, 0.1),
   });
-  yPosition -= 25;
+  yPosition -= 30;
 
-  // Explanation box
+  // Professional explanation box with shadow
+  page.drawRectangle({
+    x: 47,
+    y: yPosition - 202,
+    width: 505,
+    height: 210,
+    color: rgb(0.85, 0.85, 0.85),
+  });
+
   page.drawRectangle({
     x: 45,
     y: yPosition - 200,
     width: 505,
     height: 210,
-    color: rgb(0.98, 0.98, 0.98),
-    borderColor: rgb(0.7, 0.7, 0.7),
-    borderWidth: 1,
+    color: rgb(0.98, 0.99, 1),
+    borderColor: rgb(0.3, 0.5, 0.8),
+    borderWidth: 2,
   });
 
   // FIFO explanation
@@ -912,14 +1030,23 @@ function drawModel100Instructions(
   regularFont: PDFFont,
   yPosition: number
 ): void {
+  // Section title with accent bar
+  page.drawRectangle({
+    x: 45,
+    y: yPosition - 2,
+    width: 5,
+    height: 18,
+    color: rgb(0.2, 0.4, 0.8),
+  });
+
   page.drawText('INSTRUCCIONES PARA COMPLETAR LA DECLARACION', {
-    x: 50,
+    x: 55,
     y: yPosition,
     size: 12,
     font: boldFont,
-    color: rgb(0, 0, 0),
+    color: rgb(0.1, 0.1, 0.1),
   });
-  yPosition -= 25;
+  yPosition -= 30;
 
   const instructions = [
     {
@@ -969,52 +1096,29 @@ function drawModel100Instructions(
   instructions.forEach((instruction) => {
     // Check if we need a new page
     if (yPosition < 150) {
-      const newPage = pdfDoc.addPage([595.28, 841.89]);
-      page = newPage;
-      yPosition = 800;
+      page = newPage(pdfDoc);
+      yPosition = startY();
     }
 
     page.drawText(instruction.title, {
-      x: 50,
+      x: CONTENT.x,
       y: yPosition,
       size: 10,
       font: boldFont,
-      color: rgb(0, 0, 0),
+      color: COLORS.text,
     });
     yPosition -= 15;
 
-    page.drawText(instruction.content, {
-      x: 60,
-      y: yPosition,
-      size: 9,
-      font: regularFont,
-      color: rgb(0, 0, 0),
-    });
-    yPosition -= 12;
-
+    const maxWidth = CONTENT.width - 20;
+    yPosition = drawTextWrapped(page, regularFont, instruction.content, CONTENT.x + 10, yPosition, 9, COLORS.text, maxWidth);
     if (instruction.content2) {
-      page.drawText(instruction.content2, {
-        x: 60,
-        y: yPosition,
-        size: 9,
-        font: regularFont,
-        color: rgb(0, 0, 0),
-      });
-      yPosition -= 12;
+      yPosition = drawTextWrapped(page, regularFont, instruction.content2, CONTENT.x + 10, yPosition, 9, COLORS.text, maxWidth);
     }
-
     if (instruction.content3) {
-      page.drawText(instruction.content3, {
-        x: 60,
-        y: yPosition,
-        size: 9,
-        font: regularFont,
-        color: rgb(0, 0, 0),
-      });
-      yPosition -= 12;
+      yPosition = drawTextWrapped(page, regularFont, instruction.content3, CONTENT.x + 10, yPosition, 9, COLORS.text, maxWidth);
     }
 
-    yPosition -= 10;
+    yPosition -= 6;
   });
 }
 
