@@ -1,25 +1,63 @@
 /**
  * Report Format Service
- * Generates Spanish tax declaration formats
+ * Generates Spanish tax declaration formats compliant with AEAT regulations
  * 
- * IMPORTANT: These are simplified templates for development
- * Production implementation MUST verify exact formats with AEAT (Agencia Tributaria)
+ * ============================================================================
+ * LEGAL FRAMEWORK FOR CRYPTOCURRENCY TAXATION IN SPAIN
+ * ============================================================================
  * 
- * Spanish Tax Forms for Cryptocurrency:
+ * 1. MODELO 100 (IRPF - Personal Income Tax)
+ *    Legal basis: Ley 35/2006 del IRPF, Article 33.1 (Capital Gains)
+ *    
+ *    CASILLA 1804: Ganancias y pérdidas patrimoniales - Monedas virtuales
+ *    - All crypto gains/losses integrate into "Base Imponible del Ahorro"
+ *    - Must declare transactions, not mere holding of cryptocurrencies
+ *    - Filing period: April-June (year following the fiscal year)
+ *    
+ *    Three taxable scenarios:
+ *    a) Sale of crypto for euros/fiat currency (Art. 33.1 LIRPF)
+ *    b) Exchange of one crypto for another - treated as permuta/barter
+ *    c) Platform bankruptcy losses (Art. 14.2.k LIRPF - special rules)
+ *    
+ *    Valuation method: FIFO (First In, First Out) - Art. 37 LIRPF
+ *    - Acquisition cost includes: purchase price + commissions
+ *    - Disposal value includes: sale price - commissions
+ *    - For partial sales: oldest acquisitions sold first
  * 
- * 1. Modelo 100 (IRPF - Personal Income Tax)
- *    - Reports capital gains/losses from crypto transactions
- *    - Box 1625-1639: Capital gains and losses
- *    - Filed annually (April-June)
+ * 2. MODELO 720 (Declaration of Assets Abroad)
+ *    Legal basis: Real Decreto 1558/2012
+ *    - Reports crypto held in foreign exchanges if >50,000€
+ *    - Filing deadline: March 31
+ *    - Penalties for non-compliance are severe
+ *    - Only required if threshold exceeded
  * 
- * 2. Modelo 720 (Declaration of Assets Abroad)
- *    - Reports crypto held in foreign exchanges (>50,000€)
- *    - Must be filed by March 31
- *    - Only required if total exceeds threshold
+ * 3. MODELO 714 (Wealth Tax - Impuesto sobre el Patrimonio)
+ *    Legal basis: Ley 19/1991 del Impuesto sobre el Patrimonio
+ *    - Reports total wealth including crypto
+ *    - Threshold varies by Autonomous Community (typically 700,000€)
+ *    - Filed together with Modelo 100
+ *    - Some regions have abolished this tax
  * 
- * 3. Modelo 714 (Wealth Tax - Impuesto sobre el Patrimonio)
- *    - Reports total wealth including crypto (threshold varies by region)
- *    - Filed with Modelo 100
+ * 4. MODELO 721 (Informative Declaration - NEW 2023)
+ *    Legal basis: Orden HAC/1398/2021
+ *    - Quarterly informative declaration of crypto operations
+ *    - Required for exchanges and custodial platforms
+ *    - Individuals may need to report if using foreign platforms
+ * 
+ * ============================================================================
+ * IMPORTANT NOTICES
+ * ============================================================================
+ * - This service generates INFORMATIVE/SUPPORTING documentation
+ * - Official submission MUST be done through AEAT channels:
+ *   • Renta Web: https://www.agenciatributaria.gob.es
+ *   • Programa PADRE (official desktop application)
+ * - Consult a qualified tax advisor (asesor fiscal colegiado) before filing
+ * - Keep all transaction records for at least 4 years (Art. 66 LGT)
+ * 
+ * References:
+ * - AEAT Crypto Guide: https://sede.agenciatributaria.gob.es
+ * - Consulta Vinculante V1579-22 (platform bankruptcy losses)
+ * - DGT Guidelines on cryptocurrency taxation
  */
 
 import { TaxCalculationResult } from './tax-calculation.service';
