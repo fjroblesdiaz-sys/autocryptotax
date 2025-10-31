@@ -95,6 +95,51 @@ const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 export class PriceAPIService {
   private baseUrl = 'https://api.coingecko.com/api/v3';
+  private lastRequestTime = 0;
+  private minRequestInterval = 5000; // 5 seconds between requests to avoid rate limits
+
+  /**
+   * Sleep utility for rate limiting
+   */
+  private async sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Ensure minimum time between API requests
+   */
+  private async ensureRateLimit(): Promise<void> {
+    const now = Date.now();
+    const timeSinceLastRequest = now - this.lastRequestTime;
+    
+    if (timeSinceLastRequest < this.minRequestInterval) {
+      const waitTime = this.minRequestInterval - timeSinceLastRequest;
+      await this.sleep(waitTime);
+    }
+    
+    this.lastRequestTime = Date.now();
+  }
+
+  /**
+   * Get fallback price based on historical averages
+   */
+  private getFallbackPrice(symbol: string): number {
+    const fallbackPrices: Record<string, number> = {
+      'BTC': 30000,
+      'ETH': 2000,
+      'BNB': 300,
+      'USDT': 0.92,
+      'USDC': 0.92,
+      'DAI': 0.92,
+      'BUSD': 0.92,
+      'TUSD': 0.92,
+      'SOL': 100,
+      'XRP': 0.5,
+      'ADA': 0.4,
+      'DOGE': 0.08,
+    };
+    return fallbackPrices[symbol] || 1.0;
+  }
 
   /**
    * Get current EUR prices for multiple cryptocurrencies
@@ -178,49 +223,68 @@ export class PriceAPIService {
   }
 
   /**
-   * Get historical price for a specific date
+   * Get historical price for a specific date with retry logic
    * Note: Free tier has limited historical data (last 365 days)
    */
-  async getHistoricalPriceInEUR(symbol: string, date: Date): Promise<number> {
+  async getHistoricalPriceInEUR(symbol: string, date: Date, retries = 3): Promise<number> {
     const coinId = SYMBOL_TO_COINGECKO_ID[symbol];
     
     if (!coinId) {
-      console.warn(`[PriceAPI] No CoinGecko ID for ${symbol}, using 1 EUR`);
-      return 1.0;
+      console.warn(`[PriceAPI] No CoinGecko ID for ${symbol}, using fallback`);
+      return this.getFallbackPrice(symbol);
     }
 
-    try {
-      // Format date as DD-MM-YYYY
-      const day = String(date.getDate()).padStart(2, '0');
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const year = date.getFullYear();
-      const dateStr = `${day}-${month}-${year}`;
+    // Format date as DD-MM-YYYY
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    const dateStr = `${day}-${month}-${year}`;
 
-      const url = `${this.baseUrl}/coins/${coinId}/history?date=${dateStr}`;
+    for (let attempt = 0; attempt < retries; attempt++) {
+      try {
+        // Ensure rate limiting between requests
+        await this.ensureRateLimit();
 
-      const response = await fetch(url, {
-        headers: {
-          'Accept': 'application/json',
-        },
-      });
+        const url = `${this.baseUrl}/coins/${coinId}/history?date=${dateStr}`;
 
-      if (!response.ok) {
-        throw new Error(`CoinGecko API error: ${response.status}`);
+        const response = await fetch(url, {
+          headers: {
+            'Accept': 'application/json',
+          },
+        });
+
+        if (response.status === 429) {
+          // Rate limited - use exponential backoff
+          const waitTime = Math.pow(2, attempt) * 10000; // 10s, 20s, 40s
+          console.warn(`[PriceAPI] Rate limited (429), waiting ${waitTime/1000}s before retry ${attempt + 1}/${retries}`);
+          await this.sleep(waitTime);
+          continue;
+        }
+
+        if (!response.ok) {
+          throw new Error(`CoinGecko API error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        
+        if (data.market_data?.current_price?.eur) {
+          return data.market_data.current_price.eur;
+        }
+
+        console.warn(`[PriceAPI] No historical price for ${symbol} on ${dateStr}, using fallback`);
+        return this.getFallbackPrice(symbol);
+
+      } catch (error) {
+        if (attempt === retries - 1) {
+          console.error(`[PriceAPI] All retries failed for ${symbol} on ${dateStr}, using fallback`);
+          return this.getFallbackPrice(symbol);
+        }
+        console.warn(`[PriceAPI] Attempt ${attempt + 1} failed for ${symbol}, retrying...`);
+        await this.sleep(5000); // Wait 5s between retries
       }
-
-      const data = await response.json();
-      
-      if (data.market_data?.current_price?.eur) {
-        return data.market_data.current_price.eur;
-      }
-
-      console.warn(`[PriceAPI] No historical price for ${symbol} on ${dateStr}, using 1 EUR`);
-      return 1.0;
-
-    } catch (error) {
-      console.error(`[PriceAPI] Error fetching historical price for ${symbol}:`, error);
-      return 1.0;
     }
+
+    return this.getFallbackPrice(symbol);
   }
 }
 

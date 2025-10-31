@@ -108,8 +108,36 @@ export async function POST(request: NextRequest) {
       }, { status: 404 });
     }
 
-    // Step 2: Process transactions (categorize, get prices, etc.)
-    const pricesMap = new Map(); // TODO: Fetch actual historical prices
+    // Step 2: Fetch historical prices for transactions
+    console.log('[API] Fetching historical prices for transactions...');
+    const pricesMap = new Map();
+    
+    // Get unique dates and assets from transactions
+    const priceRequests: Array<{ asset: string; date: Date; txHash: string }> = [];
+    for (const tx of transactionData.transactions) {
+      const txDate = new Date(tx.timestamp * 1000);
+      priceRequests.push({
+        asset: 'ETH', // For now, we're only handling ETH
+        date: txDate,
+        txHash: tx.hash
+      });
+    }
+
+    // Fetch historical prices (rate limiting handled by priceAPIService)
+    const { priceAPIService } = await import('@/features/reports/services/price-api.service');
+    for (const req of priceRequests) {
+      try {
+        const price = await priceAPIService.getHistoricalPriceInEUR(req.asset, req.date);
+        pricesMap.set(`${req.asset}-${req.txHash}`, price);
+      } catch (error) {
+        console.error(`[API] Failed to fetch price for ${req.asset}:`, error);
+        pricesMap.set(`${req.asset}-${req.txHash}`, 2500); // Fallback price
+      }
+    }
+
+    console.log(`[API] Fetched prices for ${pricesMap.size} transactions`);
+
+    // Step 3: Process transactions (categorize with prices)
     const processedTransactions = processBlockchainTransactions(
       transactionData.transactions,
       walletAddress,

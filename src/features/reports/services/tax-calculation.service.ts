@@ -228,7 +228,7 @@ class FIFOQueue {
 export function processBlockchainTransactions(
   blockchainTxs: BlockchainTransaction[],
   walletAddress: string,
-  prices: Map<string, PriceData | null>
+  prices: Map<string, PriceData | null | number>
 ): ProcessedTransaction[] {
   const processed: ProcessedTransaction[] = [];
 
@@ -241,15 +241,29 @@ export function processBlockchainTransactions(
   // - Contract interactions
   
   for (const tx of blockchainTxs) {
-    // Simple classification based on transaction type
-    // In production, this needs much more sophisticated logic
+    // Skip transactions with 0 value (contract interactions, approvals, etc.)
+    const amount = parseFloat(tx.value);
+    if (amount === 0) {
+      continue;
+    }
     
     const isOutgoing = tx.from.toLowerCase() === walletAddress.toLowerCase();
     const isIncoming = tx.to.toLowerCase() === walletAddress.toLowerCase();
 
+    // Get price from map or use fallback
+    const priceKey = `ETH-${tx.hash}`;
+    let priceEUR = 2500; // Default fallback
+    
+    if (prices.has(priceKey)) {
+      const priceData = prices.get(priceKey);
+      if (typeof priceData === 'number') {
+        priceEUR = priceData;
+      } else if (priceData && typeof priceData === 'object' && 'price' in priceData) {
+        priceEUR = priceData.price;
+      }
+    }
+
     if (isOutgoing && !isIncoming) {
-      const priceEUR = 2500; // Mock price, in production get from prices map
-      const amount = parseFloat(tx.value);
       processed.push({
         hash: tx.hash,
         date: new Date(tx.timestamp * 1000),
@@ -261,8 +275,6 @@ export function processBlockchainTransactions(
         to: tx.to,
       });
     } else if (isIncoming && !isOutgoing) {
-      const priceEUR = 2500; // Mock price
-      const amount = parseFloat(tx.value);
       processed.push({
         hash: tx.hash,
         date: new Date(tx.timestamp * 1000),
@@ -276,6 +288,7 @@ export function processBlockchainTransactions(
     }
   }
 
+  console.log(`[TaxCalc] Processed ${processed.length} transactions from ${blockchainTxs.length} blockchain transactions`);
   return processed;
 }
 

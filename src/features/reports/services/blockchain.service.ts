@@ -42,31 +42,117 @@ export interface TransactionAnalysis {
 
 /**
  * Fetch transactions for a wallet address
- * This uses blockchain explorers' APIs or RPC providers
+ * Uses Etherscan API for Ethereum mainnet
  */
 export async function fetchWalletTransactions(
   address: string,
   chain: string = 'ethereum',
   dateRange?: { from: Date; to: Date }
 ): Promise<TransactionAnalysis> {
-  // TODO: Implement actual blockchain API calls
-  // Options:
-  // - Etherscan API for Ethereum
-  // - BscScan API for BSC
-  // - Polygonscan for Polygon
-  // - Alchemy/Infura RPC providers
-  // - Moralis API for multi-chain support
+  console.log(`[Blockchain] Fetching transactions for ${address} on ${chain}`);
   
-  // For now, return mock data structure
-  // In production, this would make actual API calls
+  // Get API configuration
+  const etherscanApiKey = process.env.ETHERSCAN_API_KEY || process.env.NEXT_PUBLIC_ETHERSCAN_API_KEY;
   
-  console.log(`Fetching transactions for ${address} on ${chain}`);
-  
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  
-  // Mock transactions for testing
-  // In production, this would fetch real data from Etherscan, Alchemy, etc.
+  if (!etherscanApiKey) {
+    console.warn('[Blockchain] No Etherscan API key found, using mock data');
+    return getMockTransactions(address, dateRange);
+  }
+
+  try {
+    // Fetch normal transactions using Etherscan API V2
+    const normalTxUrl = `https://api.etherscan.io/v2/api?chainid=1&module=account&action=txlist&address=${address}&startblock=0&endblock=99999999&sort=asc&apikey=${etherscanApiKey}`;
+    
+    console.log('[Blockchain] Calling Etherscan API V2...');
+    const response = await fetch(normalTxUrl);
+    
+    if (!response.ok) {
+      throw new Error(`Etherscan API returned ${response.status}`);
+    }
+
+    const data = await response.json();
+    
+    if (data.status !== '1') {
+      console.warn('[Blockchain] Etherscan API error:', {
+        status: data.status,
+        message: data.message,
+        result: data.result
+      });
+      
+      if (data.message === 'No transactions found') {
+        console.log('[Blockchain] No transactions found for this address');
+        return {
+          address,
+          chain,
+          transactions: [],
+          totalTransactions: 0,
+          dateRange: dateRange || {
+            from: new Date(new Date().getFullYear() - 1, 0, 1),
+            to: new Date()
+          }
+        };
+      }
+      
+      // Common Etherscan errors
+      if (data.result && typeof data.result === 'string') {
+        if (data.result.includes('Invalid API Key')) {
+          console.error('[Blockchain] Invalid Etherscan API key');
+        } else if (data.result.includes('rate limit')) {
+          console.error('[Blockchain] Rate limit exceeded');
+        }
+        throw new Error(`Etherscan API: ${data.result}`);
+      }
+      
+      throw new Error(data.message || data.result || 'Etherscan API error');
+    }
+
+    const rawTransactions = data.result || [];
+    console.log(`[Blockchain] Found ${rawTransactions.length} transactions from Etherscan`);
+
+    // Convert Etherscan format to our format
+    const transactions: BlockchainTransaction[] = rawTransactions
+      .filter((tx: any) => {
+        const txDate = new Date(parseInt(tx.timeStamp) * 1000);
+        if (!dateRange) return true;
+        return txDate >= dateRange.from && txDate <= dateRange.to;
+      })
+      .map((tx: any) => ({
+        hash: tx.hash,
+        from: tx.from,
+        to: tx.to,
+        value: (parseInt(tx.value) / 1e18).toString(), // Convert Wei to ETH
+        timestamp: parseInt(tx.timeStamp),
+        blockNumber: parseInt(tx.blockNumber),
+        gasUsed: tx.gasUsed,
+        gasPrice: tx.gasPrice,
+        methodId: tx.methodId,
+        contractAddress: tx.contractAddress,
+        type: tx.value === '0' ? 'contract_interaction' : 'transfer' as const,
+      }));
+
+    console.log(`[Blockchain] After date filtering: ${transactions.length} transactions`);
+
+    return {
+      address,
+      chain,
+      transactions,
+      totalTransactions: transactions.length,
+      dateRange: dateRange || {
+        from: new Date(new Date().getFullYear() - 1, 0, 1),
+        to: new Date()
+      }
+    };
+  } catch (error) {
+    console.error('[Blockchain] Error fetching from Etherscan:', error);
+    console.warn('[Blockchain] Falling back to mock data');
+    return getMockTransactions(address, dateRange);
+  }
+}
+
+/**
+ * Get mock transactions for testing
+ */
+function getMockTransactions(address: string, dateRange?: { from: Date; to: Date }): TransactionAnalysis {
   const mockTransactions: BlockchainTransaction[] = [
     {
       hash: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
@@ -99,7 +185,7 @@ export async function fetchWalletTransactions(
   
   return {
     address,
-    chain,
+    chain: 'ethereum',
     transactions: mockTransactions,
     totalTransactions: mockTransactions.length,
     dateRange: dateRange || {
