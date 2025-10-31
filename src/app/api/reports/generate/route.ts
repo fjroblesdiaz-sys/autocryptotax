@@ -44,6 +44,10 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validated = GenerateReportSchema.parse(body);
 
+    // Allow mocked wallet for testing via environment variable
+    const mockedWalletAddress = (process.env.MOCK_WALLET_ADDRESS || '').trim();
+    const walletAddress = mockedWalletAddress.length > 0 ? mockedWalletAddress : validated.walletAddress;
+
     // Step 0: Create or update report request in database
     if (validated.reportRequestId) {
       reportRequest = await prisma.reportRequest.update({
@@ -52,7 +56,7 @@ export async function POST(request: NextRequest) {
           status: 'processing',
           dataSource: 'wallet',
           sourceData: {
-            walletAddress: validated.walletAddress,
+            walletAddress,
             chain: validated.chain,
             dateRange: validated.dateRange,
           },
@@ -70,7 +74,7 @@ export async function POST(request: NextRequest) {
           status: 'processing',
           dataSource: 'wallet',
           sourceData: {
-            walletAddress: validated.walletAddress,
+            walletAddress,
             chain: validated.chain,
             dateRange: validated.dateRange,
           },
@@ -92,7 +96,7 @@ export async function POST(request: NextRequest) {
 
     // Step 1: Fetch blockchain transactions
     const transactionData = await fetchWalletTransactions(
-      validated.walletAddress,
+      walletAddress,
       validated.chain,
       validated.dateRange
     );
@@ -108,7 +112,7 @@ export async function POST(request: NextRequest) {
     const pricesMap = new Map(); // TODO: Fetch actual historical prices
     const processedTransactions = processBlockchainTransactions(
       transactionData.transactions,
-      validated.walletAddress,
+      walletAddress,
       pricesMap
     );
 
@@ -222,7 +226,7 @@ export async function POST(request: NextRequest) {
       summary: {
         fiscalYear: validated.fiscalYear,
         reportType: validated.reportType,
-        walletAddress: validated.walletAddress,
+        walletAddress,
         totalTransactions: taxCalculation.transactions.length,
         totalGains: taxCalculation.summary.totalGains,
         totalLosses: taxCalculation.summary.totalLosses,

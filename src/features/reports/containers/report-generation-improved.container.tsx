@@ -134,12 +134,19 @@ export const ReportGenerationImprovedContainer = ({ reportRequestIdParam }: Repo
       if (reportRequest.dataSource === 'wallet') {
         // Wallet-based generation
         const walletData = reportRequest.sourceData as any;
+        console.log('[ReportGeneration] Wallet data from sourceData:', walletData);
         body = {
           ...body,
           walletAddress: walletData.address,
           chain: walletData.chain || 'ethereum',
           dateRange: walletData.dateRange,
+          taxpayerInfo: {
+            nif: reportRequest.taxpayerNif || '',
+            name: reportRequest.taxpayerName || '',
+            surname: reportRequest.taxpayerSurname || '',
+          },
         };
+        console.log('[ReportGeneration] Request body for wallet:', body);
       } else if (reportRequest.dataSource === 'api-key') {
         // Exchange API-based generation
         endpoint = '/api/reports/generate-from-exchange';
@@ -173,7 +180,9 @@ export const ReportGenerationImprovedContainer = ({ reportRequestIdParam }: Repo
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to generate report');
+        console.error('[ReportGeneration] API Error Response:', errorData);
+        console.error('[ReportGeneration] Request body was:', body);
+        throw new Error(errorData.message || errorData.error || 'Failed to generate report');
       }
 
       setProgress(30);
