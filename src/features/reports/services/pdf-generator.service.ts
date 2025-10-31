@@ -207,87 +207,77 @@ function drawModel100Header(
   yPosition: number
 ): number {
   const { width } = page.getSize();
+  const boxX = 40;
+  const boxWidth = width - 80;
+  const boxHeight = 130; // taller header for better padding
+  const boxY = yPosition - boxHeight - 10; // small top padding from current y
   
   // Header box
   page.drawRectangle({
-    x: 40,
-    y: yPosition - 105,
-    width: width - 80,
-    height: 115,
+    x: boxX,
+    y: boxY,
+    width: boxWidth,
+    height: boxHeight,
     color: rgb(0.95, 0.97, 1),
     borderColor: rgb(0.2, 0.3, 0.5),
     borderWidth: 2,
   });
 
-  // Title
-  page.drawText('MODELO 100 - IRPF', {
-    x: width / 2 - 110,
-    y: yPosition - 15,
-    size: 22,
-    font: boldFont,
-    color: rgb(0.1, 0.2, 0.4),
-  });
-  yPosition -= 35;
+  // Helper to center text
+  const centerText = (text: string, size: number, font: PDFFont, y: number, color = rgb(0,0,0)) => {
+    const tw = font.widthOfTextAtSize(text, size);
+    const x = width / 2 - tw / 2;
+    page.drawText(text, { x, y, size, font, color });
+  };
+
+  // Position content relative to the header box for perfect centering
+  let lineY = boxY + boxHeight - 28; // top padding inside box
+  // Title (centered)
+  centerText('MODELO 100 - IRPF', 22, boldFont, lineY, rgb(0.1, 0.2, 0.4));
+  lineY -= 24;
 
   // Subtitle
-  page.drawText('Impuesto sobre la Renta de las Personas Físicas', {
-    x: width / 2 - 180,
-    y: yPosition,
-    size: 13,
-    font: regularFont,
-    color: rgb(0, 0, 0),
-  });
-  yPosition -= 18;
+  centerText('Impuesto sobre la Renta de las Personas Físicas', 13, regularFont, lineY, rgb(0,0,0));
+  lineY -= 18;
 
   // Legal reference
-  page.drawText('CASILLA 1804: Ganancias y Pérdidas Patrimoniales - Monedas Virtuales', {
-    x: width / 2 - 210,
-    y: yPosition,
-    size: 10,
-    font: regularFont,
-    color: rgb(0.3, 0.3, 0.3),
-  });
-  yPosition -= 14;
+  centerText('CASILLA 1804: Ganancias y Pérdidas Patrimoniales - Monedas Virtuales', 10, regularFont, lineY, rgb(0.3,0.3,0.3));
+  lineY -= 14;
 
-  page.drawText('Base Imponible del Ahorro (Art. 33.1 y 37 Ley 35/2006 LIRPF)', {
-    x: width / 2 - 170,
-    y: yPosition,
-    size: 9,
-    font: regularFont,
-    color: rgb(0.4, 0.4, 0.4),
-  });
-  yPosition -= 18;
+  centerText('Base Imponible del Ahorro (Art. 33.1 y 37 Ley 35/2006 LIRPF)', 9, regularFont, lineY, rgb(0.4,0.4,0.4));
+  lineY -= 18;
 
   // Fiscal year
-  page.drawText(`Ejercicio Fiscal: ${report.fiscalYear}`, {
-    x: width / 2 - 70,
-    y: yPosition,
-    size: 12,
-    font: boldFont,
-    color: rgb(0, 0, 0),
-  });
-  yPosition -= 5;
+  centerText(`Ejercicio Fiscal: ${report.fiscalYear}`, 12, boldFont, lineY, rgb(0,0,0));
+  lineY -= 6;
 
-  // AEAT reference
-  page.drawText('AGENCIA ESTATAL DE ADMINISTRACION TRIBUTARIA', {
-    x: width - 240,
-    y: yPosition + 75,
-    size: 8,
+  // AEAT reference (bottom-right inside the header box)
+  const aeat1 = 'AGENCIA ESTATAL DE ADMINISTRACION TRIBUTARIA';
+  const aeat2 = 'Ministerio de Hacienda y Función Pública';
+  const aeat1Size = 8;
+  const aeat2Size = 7;
+  const aeat1Width = regularFont.widthOfTextAtSize(aeat1, aeat1Size);
+  const aeat2Width = regularFont.widthOfTextAtSize(aeat2, aeat2Size);
+  const rightPadding = 14;
+  const bottomPadding = 10;
+  const aeatY = boxY + bottomPadding + aeat2Size + 2; // second line above bottom
+  page.drawText(aeat2, {
+    x: boxX + boxWidth - aeat2Width - rightPadding,
+    y: boxY + bottomPadding,
+    size: aeat2Size,
+    font: regularFont,
+    color: rgb(0.6, 0.6, 0.6),
+  });
+  page.drawText(aeat1, {
+    x: boxX + boxWidth - aeat1Width - rightPadding,
+    y: aeatY,
+    size: aeat1Size,
     font: regularFont,
     color: rgb(0.5, 0.5, 0.5),
   });
 
-  page.drawText('Ministerio de Hacienda y Función Pública', {
-    x: width - 205,
-    y: yPosition + 65,
-    size: 7,
-    font: regularFont,
-    color: rgb(0.6, 0.6, 0.6),
-  });
-
-  yPosition -= 20;
-
-  return yPosition;
+  // Return y just below the header box with spacing
+  return boxY - 16;
 }
 
 /**
