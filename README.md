@@ -85,7 +85,7 @@ crypto-tax/
 - [x] Exchange integration:
   - [x] Binance (via API Key)
   - [x] Coinbase Advanced Trade (via CDP API Key)
-  - [ ] WhiteBit (in progress)
+  - [x] WhiteBit (via API Key)
 - [x] Automated tax calculation based on Spanish regulations (FIFO method)
 - [x] Model 100 report generation (IRPF)
 - [x] Historical transaction tracking

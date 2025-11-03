@@ -82,7 +82,7 @@ export const APIKeyConfig = ({ onSubmit, onBack, isSubmitting = false }: APIKeyC
               <SelectContent>
                 <SelectItem value="binance">Binance</SelectItem>
                 <SelectItem value="coinbase">Coinbase Advanced Trade</SelectItem>
-                <SelectItem value="whitebit" disabled>WhiteBit (Próximamente)</SelectItem>
+                <SelectItem value="whitebit">WhiteBit</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -90,14 +90,20 @@ export const APIKeyConfig = ({ onSubmit, onBack, isSubmitting = false }: APIKeyC
           {/* API Key */}
           <div className="space-y-2">
             <Label htmlFor="api-key">
-              {platform === 'coinbase' ? 'API Key Name (campo "name" del JSON)' : 'API Key'}
+              {platform === 'coinbase' 
+                ? 'API Key Name (campo "name" del JSON)' 
+                : platform === 'whitebit' 
+                ? 'Public Key' 
+                : 'API Key'}
             </Label>
             <Input
               id="api-key"
               type="text"
               placeholder={
                 platform === 'coinbase' 
-                  ? 'organizations/xxx/apiKeys/yyy' 
+                  ? 'organizations/xxx/apiKeys/yyy'
+                  : platform === 'whitebit'
+                  ? 'Tu WhiteBit Public Key'
                   : 'Ingresa tu API Key'
               }
               value={apiKey}
@@ -108,12 +114,21 @@ export const APIKeyConfig = ({ onSubmit, onBack, isSubmitting = false }: APIKeyC
                 Usa el campo &quot;name&quot; del archivo cdp_api_key.json (comienza con organizations/)
               </p>
             )}
+            {platform === 'whitebit' && (
+              <p className="text-xs text-muted-foreground">
+                Copia el campo &quot;Public Key&quot; generado en WhiteBit
+              </p>
+            )}
           </div>
 
           {/* API Secret */}
           <div className="space-y-2">
             <Label htmlFor="api-secret">
-              {platform === 'coinbase' ? 'Private Key (del archivo JSON)' : 'API Secret'}
+              {platform === 'coinbase' 
+                ? 'Private Key (del archivo JSON)' 
+                : platform === 'whitebit'
+                ? 'Secret Key'
+                : 'API Secret'}
             </Label>
             <div className="relative">
               <Input
@@ -122,6 +137,8 @@ export const APIKeyConfig = ({ onSubmit, onBack, isSubmitting = false }: APIKeyC
                 placeholder={
                   platform === 'coinbase'
                     ? 'Copia el valor de privateKey del JSON...'
+                    : platform === 'whitebit'
+                    ? 'Tu WhiteBit Secret Key'
                     : 'Ingresa tu API Secret'
                 }
                 value={apiSecret}
@@ -145,6 +162,11 @@ export const APIKeyConfig = ({ onSubmit, onBack, isSubmitting = false }: APIKeyC
             {platform === 'coinbase' && (
               <p className="text-xs text-muted-foreground">
                 Usa el campo &quot;privateKey&quot; del archivo JSON (formato base64 o PEM, ambos funcionan)
+              </p>
+            )}
+            {platform === 'whitebit' && (
+              <p className="text-xs text-muted-foreground">
+                Copia el campo &quot;Secret Key&quot; generado en WhiteBit (solo se muestra una vez)
               </p>
             )}
           </div>
@@ -245,11 +267,20 @@ export const APIKeyConfig = ({ onSubmit, onBack, isSubmitting = false }: APIKeyC
           <div>
             <h4 className="font-semibold mb-2">WhiteBit</h4>
             <ol className="list-decimal list-inside text-sm text-muted-foreground space-y-1">
-              <li>Ve a tu perfil → API Keys</li>
-              <li>Crea una nueva API key</li>
-              <li>Activa solo permisos de lectura (Trading history)</li>
-              <li>Guarda tu API Key y Secret</li>
+              <li>Ve a <a href="https://whitebit.com/settings/api" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">WhiteBit → Configuración → API</a></li>
+              <li>Habilita <strong>2FA (Two-Factor Authentication)</strong> si no lo has hecho</li>
+              <li>Clic en <strong>&quot;Generate API Key&quot;</strong> e ingresa tu código 2FA</li>
+              <li>Selecciona los permisos necesarios:
+                <ul className="list-disc list-inside ml-4 mt-1">
+                  <li><strong>Wallet balance and history</strong> (lectura)</li>
+                  <li><strong>Trade balance and order history</strong> (lectura)</li>
+                </ul>
+              </li>
+              <li>Guarda tu <strong>Public Key</strong> y <strong>Secret Key</strong> de forma segura</li>
             </ol>
+            <p className="text-xs text-muted-foreground mt-2 font-semibold">
+              ⚠️ El Secret Key solo se muestra una vez. Guárdalo inmediatamente.
+            </p>
           </div>
           <Alert variant="destructive" className="mt-4">
             <AlertTriangle className="h-4 w-4" />
