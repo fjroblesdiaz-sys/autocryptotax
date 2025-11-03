@@ -78,18 +78,30 @@ crypto-tax/
 └── ...config files
 ```
 
+## ✅ Implemented Features
+
+- [x] Multi-wallet integration (MetaMask, WalletConnect, etc.)
+- [x] Blockchain transaction import (Ethereum, Base, Polygon, etc.)
+- [x] Exchange integration:
+  - [x] Binance (via API Key)
+  - [x] Coinbase Advanced Trade (via CDP API Key)
+  - [ ] WhiteBit (in progress)
+- [x] Automated tax calculation based on Spanish regulations (FIFO method)
+- [x] Model 100 report generation (IRPF)
+- [x] Historical transaction tracking
+- [x] Capital gains/loss calculation (FIFO method)
+- [x] PDF export functionality
+- [x] Server-side report generation for reliability
+
 ## 🔮 Planned Features
 
-- [ ] Multi-wallet integration (MetaMask, Trust Wallet, Ledger, etc.)
-- [ ] Blockchain transaction import (Ethereum, Bitcoin, BSC, etc.)
-- [ ] Exchange integration (Binance, Coinbase, Kraken, etc.)
-- [ ] Automated tax calculation based on Spanish regulations
-- [ ] Model 720, 100, and 714 report generation
-- [ ] Historical transaction tracking
-- [ ] Capital gains/loss calculation (FIFO, LIFO methods)
-- [ ] PDF/CSV export functionality
+- [ ] Model 720 and 714 report generation
+- [ ] CSV export functionality
 - [ ] Multi-year tax history
 - [ ] User authentication and data encryption
+- [ ] Subscription system with annual limits
+- [ ] Admin panel for business management
+- [ ] White-label template system for third parties
 - [ ] Dark/Light mode
 
 ## 🔒 Security & Privacy

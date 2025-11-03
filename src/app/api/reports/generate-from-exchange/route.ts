@@ -216,11 +216,8 @@ export async function POST(request: NextRequest) {
     // Step 1: Test API connection
     await updateProgress(reportRequest.id, 15, 'Verificando credenciales del exchange...');
     
-    let isValidConnection = false;
-    let connectionError = null;
-    
     try {
-      isValidConnection = await exchangeAPIService.testConnection(
+      const isValidConnection = await exchangeAPIService.testConnection(
         validated.exchange,
         {
           apiKey: validated.apiKey,
@@ -228,16 +225,41 @@ export async function POST(request: NextRequest) {
           passphrase: validated.passphrase,
         }
       );
-    } catch (err) {
-      connectionError = err instanceof Error ? err.message : 'Unknown error';
-    }
 
-    if (!isValidConnection) {
+      if (!isValidConnection) {
+        await prisma.reportRequest.update({
+          where: { id: reportRequest.id },
+          data: {
+            status: 'error',
+            errorMessage: 'Failed to connect to exchange. Invalid credentials.',
+          },
+        });
+
+        return NextResponse.json(
+          {
+            error: 'Invalid API credentials',
+            message: 'Failed to connect to exchange. Please verify your API key and secret.',
+            details: 'Asegúrate de que tu API key tiene permisos de lectura y que tu IP está autorizada (o sin restricción de IP).',
+          },
+          { status: 401 }
+        );
+      }
+    } catch (connectionError) {
+      console.error('[API] Connection test error:', connectionError);
+      
+      await prisma.reportRequest.update({
+        where: { id: reportRequest.id },
+        data: {
+          status: 'error',
+          errorMessage: connectionError instanceof Error ? connectionError.message : 'Connection failed',
+        },
+      });
+
       return NextResponse.json(
         {
-          error: 'Invalid API credentials',
-          message: connectionError || 'Failed to connect to exchange. Please verify your API key and secret.',
-          details: 'Asegúrate de que tu API key tiene permisos de lectura y que tu IP está autorizada (o sin restricción de IP).',
+          error: 'Connection failed',
+          message: connectionError instanceof Error ? connectionError.message : 'Failed to connect to exchange',
+          details: connectionError instanceof Error ? connectionError.stack : undefined,
         },
         { status: 401 }
       );
@@ -256,14 +278,37 @@ export async function POST(request: NextRequest) {
       validated.dateRange?.to
     );
 
+    console.log(`[API] Fetched ${exchangeTransactions.length} transactions from ${validated.exchange}`);
+
+    // If no transactions, still generate an empty report
     if (exchangeTransactions.length === 0) {
-      return NextResponse.json(
-        {
-          error: 'No transactions found',
-          message: 'No transactions found for the specified exchange and time period',
+      console.log('[API] No transactions found, generating empty report...');
+      
+      await prisma.reportRequest.update({
+        where: { id: reportRequest.id },
+        data: {
+          status: 'completed',
+          progress: 100,
+          progressMessage: 'Completado - Sin transacciones encontradas',
+          totalTransactions: 0,
+          totalGains: 0,
+          totalLosses: 0,
+          netResult: 0,
         },
-        { status: 404 }
-      );
+      });
+
+      return NextResponse.json({
+        success: true,
+        reportRequestId: reportRequest.id,
+        message: 'No se encontraron transacciones para el período especificado',
+        summary: {
+          totalTransactions: 0,
+          totalGains: 0,
+          totalLosses: 0,
+          netResult: 0,
+          generatedAt: new Date().toISOString(),
+        },
+      }, { status: 200 });
     }
 
     // Step 3: Convert to standard format

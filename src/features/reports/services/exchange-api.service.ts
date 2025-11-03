@@ -3,12 +3,13 @@
  * Handles secure server-side communication with crypto exchange APIs
  * Uses strategy pattern for exchange-specific implementations
  * 
- * Currently Supported: Binance
- * Coming Soon: Coinbase, WhiteBit
+ * Currently Supported: Binance, Coinbase
+ * Coming Soon: WhiteBit
  */
 
 import crypto from 'crypto';
 import { binanceStrategy } from './exchange-strategies/binance.strategy';
+import { coinbaseStrategy } from './exchange-strategies/coinbase.strategy';
 
 export type ExchangeType = 'binance' | 'coinbase' | 'whitebit';
 
@@ -91,100 +92,57 @@ class BinanceAPI {
 }
 
 /**
- * Coinbase Advanced Trade API Integration
- * Docs: https://docs.cloud.coinbase.com/advanced-trade-api/docs/
+ * Coinbase Advanced Trade API Integration (using strategy pattern)
+ * Docs: https://docs.cdp.coinbase.com/advanced-trade-api/docs/
  */
 class CoinbaseAPI {
-  private baseUrl = 'https://api.coinbase.com/api/v3/brokerage';
-
-  private createSignature(
-    timestamp: string,
-    method: string,
-    path: string,
-    body: string,
-    apiSecret: string
-  ): string {
-    const message = timestamp + method + path + body;
-    return crypto
-      .createHmac('sha256', apiSecret)
-      .update(message)
-      .digest('hex');
-  }
-
   async fetchTransactions(
     credentials: ExchangeCredentials,
     startDate?: Date,
     endDate?: Date
   ): Promise<ExchangeTransaction[]> {
+    // For testing/demo: Return mock data if using test credentials
+    if (credentials.apiKey === 'test' || credentials.apiKey === 'demo') {
+      const mockData = coinbaseStrategy.getMockTransactions(startDate, endDate);
+      return mockData.map(tx => ({ ...tx, exchange: 'coinbase' as const }));
+    }
+
     try {
-      const timestamp = Math.floor(Date.now() / 1000).toString();
-      const method = 'GET';
-      const path = '/orders/historical/fills';
+      console.log('[Coinbase Service] Starting transaction fetch...');
       
-      const params = new URLSearchParams();
-      if (startDate) params.append('start_date', startDate.toISOString());
-      if (endDate) params.append('end_date', endDate.toISOString());
-      
-      const fullPath = params.toString() ? `${path}?${params.toString()}` : path;
-      const signature = this.createSignature(timestamp, method, fullPath, '', credentials.apiSecret);
-
-      const response = await fetch(`${this.baseUrl}${fullPath}`, {
-        method,
-        headers: {
-          'CB-ACCESS-KEY': credentials.apiKey,
-          'CB-ACCESS-SIGN': signature,
-          'CB-ACCESS-TIMESTAMP': timestamp,
-          'CB-VERSION': '2023-01-01',
-          'Content-Type': 'application/json',
+      // Use the Coinbase strategy to fetch all transactions
+      const transactions = await coinbaseStrategy.fetchAllTransactions(
+        {
+          apiKey: credentials.apiKey,
+          apiSecret: credentials.apiSecret,
         },
-      });
+        startDate,
+        endDate
+      );
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(`Coinbase API Error: ${error.message || response.statusText}`);
-      }
-
-      const data = await response.json();
-      const fills = data.fills || [];
-
-      // Transform to standard format
-      return fills.map((fill: any) => ({
-        id: fill.trade_id,
-        timestamp: new Date(fill.trade_time).getTime(),
-        type: fill.side.toLowerCase() as 'buy' | 'sell',
-        asset: fill.product_id.split('-')[0],
-        amount: parseFloat(fill.size),
-        price: parseFloat(fill.price),
-        fee: parseFloat(fill.commission),
-        feeAsset: fill.product_id.split('-')[1],
-        total: parseFloat(fill.size) * parseFloat(fill.price),
+      // Convert to ExchangeTransaction format
+      return transactions.map(tx => ({
+        ...tx,
         exchange: 'coinbase' as const,
-        raw: fill,
       }));
+
     } catch (error) {
-      console.error('Coinbase API Error:', error);
+      console.error('[Coinbase Service] Error:', error);
       throw new Error(`Failed to fetch Coinbase transactions: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
   async testConnection(credentials: ExchangeCredentials): Promise<boolean> {
+    // Allow test credentials
+    if (credentials.apiKey === 'test' || credentials.apiKey === 'demo') {
+      return true;
+    }
+
     try {
-      const timestamp = Math.floor(Date.now() / 1000).toString();
-      const method = 'GET';
-      const path = '/accounts';
-      const signature = this.createSignature(timestamp, method, path, '', credentials.apiSecret);
-
-      const response = await fetch(`${this.baseUrl}${path}`, {
-        method,
-        headers: {
-          'CB-ACCESS-KEY': credentials.apiKey,
-          'CB-ACCESS-SIGN': signature,
-          'CB-ACCESS-TIMESTAMP': timestamp,
-          'CB-VERSION': '2023-01-01',
-        },
+      return await coinbaseStrategy.testConnection({
+        apiKey: credentials.apiKey,
+        apiSecret: credentials.apiSecret,
       });
-
-      return response.ok;
     } catch {
       return false;
     }

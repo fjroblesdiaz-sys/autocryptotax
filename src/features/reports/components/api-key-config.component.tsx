@@ -24,7 +24,7 @@ export const APIKeyConfig = ({ onSubmit, onBack, isSubmitting = false }: APIKeyC
   const [showSecret, setShowSecret] = useState(false);
   const [showPassphrase, setShowPassphrase] = useState(false);
 
-  const requiresPassphrase = platform === 'coinbase';
+  const requiresPassphrase = false; // Coinbase CDP uses API Key Name + Private Key, not passphrase
 
   const handleSubmit = () => {
     if (!apiKey || !apiSecret) return;
@@ -35,7 +35,7 @@ export const APIKeyConfig = ({ onSubmit, onBack, isSubmitting = false }: APIKeyC
       platform,
       apiKey,
       apiSecret,
-      ...(requiresPassphrase && { passphrase }),
+      ...(passphrase && { passphrase }),
     };
 
     onSubmit(data);
@@ -81,7 +81,7 @@ export const APIKeyConfig = ({ onSubmit, onBack, isSubmitting = false }: APIKeyC
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="binance">Binance</SelectItem>
-                <SelectItem value="coinbase" disabled>Coinbase (Próximamente)</SelectItem>
+                <SelectItem value="coinbase">Coinbase Advanced Trade</SelectItem>
                 <SelectItem value="whitebit" disabled>WhiteBit (Próximamente)</SelectItem>
               </SelectContent>
             </Select>
@@ -89,24 +89,41 @@ export const APIKeyConfig = ({ onSubmit, onBack, isSubmitting = false }: APIKeyC
 
           {/* API Key */}
           <div className="space-y-2">
-            <Label htmlFor="api-key">API Key</Label>
+            <Label htmlFor="api-key">
+              {platform === 'coinbase' ? 'API Key Name (campo "name" del JSON)' : 'API Key'}
+            </Label>
             <Input
               id="api-key"
               type="text"
-              placeholder="Ingresa tu API Key"
+              placeholder={
+                platform === 'coinbase' 
+                  ? 'organizations/xxx/apiKeys/yyy' 
+                  : 'Ingresa tu API Key'
+              }
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
             />
+            {platform === 'coinbase' && (
+              <p className="text-xs text-muted-foreground">
+                Usa el campo &quot;name&quot; del archivo cdp_api_key.json (comienza con organizations/)
+              </p>
+            )}
           </div>
 
           {/* API Secret */}
           <div className="space-y-2">
-            <Label htmlFor="api-secret">API Secret</Label>
+            <Label htmlFor="api-secret">
+              {platform === 'coinbase' ? 'Private Key (del archivo JSON)' : 'API Secret'}
+            </Label>
             <div className="relative">
               <Input
                 id="api-secret"
                 type={showSecret ? 'text' : 'password'}
-                placeholder="Ingresa tu API Secret"
+                placeholder={
+                  platform === 'coinbase'
+                    ? 'Copia el valor de privateKey del JSON...'
+                    : 'Ingresa tu API Secret'
+                }
                 value={apiSecret}
                 onChange={(e) => setApiSecret(e.target.value)}
                 className="pr-10"
@@ -125,6 +142,11 @@ export const APIKeyConfig = ({ onSubmit, onBack, isSubmitting = false }: APIKeyC
                 )}
               </Button>
             </div>
+            {platform === 'coinbase' && (
+              <p className="text-xs text-muted-foreground">
+                Usa el campo &quot;privateKey&quot; del archivo JSON (formato base64 o PEM, ambos funcionan)
+              </p>
+            )}
           </div>
 
           {/* Passphrase (Only for Coinbase) */}
@@ -202,13 +224,23 @@ export const APIKeyConfig = ({ onSubmit, onBack, isSubmitting = false }: APIKeyC
             </ol>
           </div>
           <div>
-            <h4 className="font-semibold mb-2">Coinbase</h4>
+            <h4 className="font-semibold mb-2">Coinbase Advanced Trade</h4>
             <ol className="list-decimal list-inside text-sm text-muted-foreground space-y-1">
-              <li>Ve a Settings → API</li>
-              <li>Crea una nueva API key</li>
-              <li>Selecciona permisos de solo lectura</li>
-              <li>Copia tu API Key, Secret y Passphrase</li>
+              <li>Ve a <a href="https://portal.cdp.coinbase.com/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Coinbase Developer Platform</a></li>
+              <li>Inicia sesión y navega a <strong>API Keys</strong></li>
+              <li>Crea una nueva clave: selecciona <strong>ECDSA</strong> como algoritmo (NO Ed25519)</li>
+              <li>Habilita el permiso <strong>&quot;view&quot;</strong> para acceder a tu historial</li>
+              <li>Descarga el archivo <strong>cdp_api_key.json</strong></li>
+              <li>Abre el archivo JSON y copia exactamente:
+                <ul className="list-disc list-inside ml-4 mt-1">
+                  <li><strong>name</strong> (el que inicia con organizations/) → pega en &quot;API Key Name&quot;</li>
+                  <li><strong>privateKey</strong> (el string completo) → pega en &quot;Private Key&quot;</li>
+                </ul>
+              </li>
             </ol>
+            <p className="text-xs text-muted-foreground mt-2 font-semibold">
+              📝 El archivo JSON solo se descarga una vez. Guárdalo en un lugar seguro.
+            </p>
           </div>
           <div>
             <h4 className="font-semibold mb-2">WhiteBit</h4>
