@@ -323,7 +323,6 @@ export const ReportGenerationImprovedContainer = ({ reportRequestIdParam }: Repo
               </div>
             </div>
           </div>
-        </div>
       </div>
     );
   }

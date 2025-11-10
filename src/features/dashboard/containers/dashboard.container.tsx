@@ -15,10 +15,7 @@ export const DashboardContainer = () => {
         </p>
       </div>
 
-      <div className="space-y-6">
-        <div>
-
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           <Card>
             <CardHeader>
               <CardTitle>Cartera Conectada</CardTitle>
@@ -70,12 +67,10 @@ export const DashboardContainer = () => {
               <h3 className="font-semibold mb-2">Paso 3: Genera Informes</h3>
               <p className="text-sm text-muted-foreground">
                 Crea informes fiscales listos para presentar a Hacienda (Modelos 720, 100, 714)
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+          </p>
+        </div>
+      </CardContent>
+    </Card>
     </div>
-  </div>
   );
 };
