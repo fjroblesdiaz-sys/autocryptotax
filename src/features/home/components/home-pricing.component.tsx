@@ -14,8 +14,17 @@ export const HomePricing = () => {
   const plans = getAllPlans();
 
   const handleSelectPlan = (planId: string) => {
-    // Navigate to checkout or pricing page for more details
-    router.push(`/pricing#${planId}`);
+    // Navigate to checkout or appropriate page based on plan
+    if (planId === 'free') {
+      // Free plan - just navigate to sign up
+      router.push('/auth/register?plan=free');
+    } else if (planId === 'business') {
+      // Business plan - contact sales
+      router.push('/contact-sales');
+    } else {
+      // Paid plans - go directly to checkout
+      router.push(`/checkout?plan=${planId}&billing=${billingCycle}`);
+    }
   };
 
   return (
