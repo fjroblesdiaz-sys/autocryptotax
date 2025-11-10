@@ -46,8 +46,10 @@ export default function LoggedInLayout({
             </Breadcrumb>
           </div>
         </header>
-        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-          {children}
+        <div className="flex flex-1 flex-col">
+          <div className="py-6 px-4 md:px-6">
+            {children}
+          </div>
         </div>
       </SidebarInset>
     </SidebarProvider>

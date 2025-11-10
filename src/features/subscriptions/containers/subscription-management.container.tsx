@@ -60,8 +60,8 @@ export const SubscriptionManagementContainer: React.FC<SubscriptionManagementCon
   };
 
   return (
-    <div className="container max-w-5xl mx-auto py-8 px-4">
-      <div className="mb-8">
+    <div className="space-y-6 max-w-5xl">
+      <div>
         <h1 className="text-3xl font-bold tracking-tight">Mi Suscripción</h1>
         <p className="text-muted-foreground mt-2">
           Gestiona tu plan, uso y facturación

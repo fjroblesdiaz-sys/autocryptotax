@@ -78,26 +78,22 @@ export const DataInputContainer = ({ sourceParam, reportRequestIdParam }: DataIn
 
   if (!source) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="text-center">
-          <p className="text-muted-foreground">Cargando...</p>
-        </div>
+      <div className="text-center py-8">
+        <p className="text-muted-foreground">Cargando...</p>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="space-y-8">
-        {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Recopilar Datos</h1>
-          <p className="text-muted-foreground mt-2">
-            Proporciona la información necesaria para generar tu informe
-          </p>
-        </div>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Recopilar Datos</h1>
+        <p className="text-muted-foreground mt-2">
+          Proporciona la información necesaria para generar tu informe
+        </p>
+      </div>
 
-        {/* Dynamic Content Based on Source */}
+      <div className="space-y-6">
         {source === 'wallet' && address && (
           <WalletDataComponent
             address={address}

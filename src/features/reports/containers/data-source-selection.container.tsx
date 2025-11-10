@@ -38,23 +38,19 @@ export const DataSourceSelectionContainer = () => {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="space-y-8">
-        {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Informes Fiscales</h1>
-          <p className="text-muted-foreground mt-2">
-            Genera declaraciones fiscales de criptomonedas para las autoridades españolas
-          </p>
-        </div>
-
-        {/* Data Source Selection */}
-        <DataSourceSelection
-          onSelect={handleSelectDataSource}
-          selectedSource={selectedSource}
-          isLoading={isLoading}
-        />
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Informes Fiscales</h1>
+        <p className="text-muted-foreground mt-2">
+          Genera declaraciones fiscales de criptomonedas para las autoridades españolas
+        </p>
       </div>
+
+      <DataSourceSelection
+        onSelect={handleSelectDataSource}
+        selectedSource={selectedSource}
+        isLoading={isLoading}
+      />
     </div>
   );
 };

@@ -279,8 +279,7 @@ export const ReportGenerationImprovedContainer = ({ reportRequestIdParam }: Repo
   // Only show skeleton on initial load, not on subsequent refetches
   if (!reportRequest && isInitialLoad && skeletonReady) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="space-y-8">
+      <div className="space-y-6">
           {/* Header Skeleton */}
           <div>
             <Skeleton className="h-9 w-64 mb-2" /> {/* Title */}
@@ -335,32 +334,27 @@ export const ReportGenerationImprovedContainer = ({ reportRequestIdParam }: Repo
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="space-y-8">
-        {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Generando Informe</h1>
-          <p className="text-muted-foreground mt-2">
-            Por favor espera mientras generamos tu informe fiscal
-          </p>
-        </div>
-
-        {/* Error Display */}
-        {errorMessage && (
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{errorMessage}</AlertDescription>
-          </Alert>
-        )}
-
-        {/* Generation Progress */}
-        <ReportGenerationWizard
-          onGenerate={handleRetry}
-          onBack={handleBack}
-          isGenerating={isGenerating}
-          generationProgress={progress}
-        />
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Generando Informe</h1>
+        <p className="text-muted-foreground mt-2">
+          Por favor espera mientras generamos tu informe fiscal
+        </p>
       </div>
+
+      {errorMessage && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{errorMessage}</AlertDescription>
+        </Alert>
+      )}
+
+      <ReportGenerationWizard
+        onGenerate={handleRetry}
+        onBack={handleBack}
+        isGenerating={isGenerating}
+        generationProgress={progress}
+      />
     </div>
   );
 };

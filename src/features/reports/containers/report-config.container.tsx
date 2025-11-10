@@ -66,46 +66,38 @@ export const ReportConfigContainer = ({ reportRequestIdParam }: ReportConfigCont
 
   if (isLoading || !reportRequest) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="text-center">
-          <p className="text-muted-foreground">Cargando...</p>
-        </div>
+      <div className="text-center py-8">
+        <p className="text-muted-foreground">Cargando...</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="text-center">
-          <p className="text-destructive">Error: {error}</p>
-          <button onClick={() => router.push('/reports')} className="mt-4 underline">
-            Volver al inicio
-          </button>
-        </div>
+      <div className="text-center py-8">
+        <p className="text-destructive">Error: {error}</p>
+        <button onClick={() => router.push('/reports')} className="mt-4 underline">
+          Volver al inicio
+        </button>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="space-y-8">
-        {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Configurar Informe</h1>
-          <p className="text-muted-foreground mt-2">
-            Selecciona el tipo de informe y el año fiscal
-          </p>
-        </div>
-
-        {/* Report Configuration Wizard */}
-        <ReportGenerationWizard
-          onGenerate={handleGenerate}
-          onBack={handleBack}
-          isGenerating={isSaving}
-          generationProgress={0}
-        />
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Configurar Informe</h1>
+        <p className="text-muted-foreground mt-2">
+          Selecciona el tipo de informe y el año fiscal
+        </p>
       </div>
+
+      <ReportGenerationWizard
+        onGenerate={handleGenerate}
+        onBack={handleBack}
+        isGenerating={isSaving}
+        generationProgress={0}
+      />
     </div>
   );
 };

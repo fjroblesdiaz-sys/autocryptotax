@@ -117,22 +117,20 @@ export const ReportCompleteContainerNew = ({ reportRequestIdParam }: ReportCompl
 
   if (isLoading || !reportRequest) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="text-center">
-          <p className="text-muted-foreground">Cargando...</p>
-        </div>
+      <div className="text-center py-8">
+        <p className="text-muted-foreground">Cargando...</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="container mx-auto px-4 py-8">
+      <div className="space-y-4">
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>{error}</AlertDescription>
         </Alert>
-        <div className="mt-4 text-center">
+        <div className="text-center">
           <Button onClick={() => router.push('/reports')}>
             Volver al inicio
           </Button>
@@ -143,7 +141,7 @@ export const ReportCompleteContainerNew = ({ reportRequestIdParam }: ReportCompl
 
   if (reportRequest.status === 'error') {
     return (
-      <div className="container mx-auto px-4 py-8 max-w-2xl">
+      <div className="space-y-6 max-w-2xl mx-auto">
         <div className="space-y-6">
           <div className="text-center">
             <h1 className="text-3xl font-bold tracking-tight">Error en Generación</h1>
@@ -170,8 +168,8 @@ export const ReportCompleteContainerNew = ({ reportRequestIdParam }: ReportCompl
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <div className="space-y-8">
+    <div className="space-y-6 max-w-4xl mx-auto">
+      <div className="space-y-6">
         {/* Success Header */}
         <div className="text-center">
           <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
