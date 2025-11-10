@@ -69,7 +69,7 @@ const navigationItems: NavItem[] = [
     title: 'Análisis',
     href: '/analytics',
     icon: BarChart3,
-    disabled: true,
+    badge: 'Preview',
   },
 ];
 

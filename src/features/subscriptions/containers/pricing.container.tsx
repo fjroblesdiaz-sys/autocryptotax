@@ -39,7 +39,7 @@ export const PricingContainer: React.FC<PricingContainerProps> = ({
 
   return (
     <div className="w-full py-12 md:py-24">
-      <div className="container px-4 md:px-6">
+      <div className="container mx-auto px-4 md:px-6">
         {/* Header */}
         <div className="text-center mb-12 space-y-4">
           <h1 className="text-4xl md:text-5xl font-bold tracking-tight">

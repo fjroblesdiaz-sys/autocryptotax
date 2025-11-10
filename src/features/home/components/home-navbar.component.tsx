@@ -4,24 +4,19 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { ConnectButton } from 'thirdweb/react';
-import { client } from '@/lib/thirdweb-client';
 import { useAuth } from '@/features/auth/hooks/use-auth.hook';
+import { UserNav } from './user-nav.component';
+import { ConnectWalletButton } from './connect-wallet-button.component';
 
 export const HomeNavbar = () => {
   const { isConnected } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const navLinks = isConnected ? [
-    { href: '/dashboard', label: 'Panel' },
-    { href: '/reports', label: 'Informes' },
-    // { href: '/staking', label: 'Staking' },
-    // { href: '/airdrop', label: 'Airdrop' },
-  ] : [
-    { href: '#features', label: 'Características' },
-    { href: '#how-it-works', label: 'Cómo funciona' },
-    // { href: '/staking', label: 'Staking' },
-    // { href: '/airdrop', label: 'Airdrop' },
+  const navLinks = [
+    { href: '/', label: 'Inicio' },
+    { href: '/pricing', label: 'Precios' },
+    { href: '/staking', label: 'Staking' },
+    { href: '/airdrop', label: 'Airdrop' },
   ];
 
   return (
@@ -48,27 +43,13 @@ export const HomeNavbar = () => {
 
           {/* Right Side Actions */}
           <div className="flex items-center gap-3">
-            <div className="hidden sm:block">
-              <ConnectButton 
-                client={client} 
-                theme="dark"
-                locale='es_ES'  
-                connectButton={{
-                  label: "Conectar",
-                  style: {
-                    height: "40px",
-                    fontSize: "14px",
-                    paddingLeft: "20px",
-                    paddingRight: "20px",
-                  },
-                }}
-                detailsButton={{
-                  style: {
-                    height: "40px",
-                    fontSize: "14px",
-                  },
-                }}
-              />
+            {/* Desktop Auth */}
+            <div className="hidden md:block">
+              {isConnected ? (
+                <UserNav />
+              ) : (
+                <ConnectWalletButton />
+              )}
             </div>
 
             {/* Mobile Menu Button */}
@@ -107,26 +88,32 @@ export const HomeNavbar = () => {
               ))}
               <Separator className="my-2" />
               <div className="pt-2">
-                <ConnectButton 
-                  client={client} 
-                  theme="dark"
-                  locale='es_ES'
-                  connectButton={{
-                    label: "Conectar",
-                    style: {
-                      height: "40px",
-                      fontSize: "14px",
-                      width: "100%",
-                    },
-                  }}
-                  detailsButton={{
-                    style: {
-                      height: "40px",
-                      fontSize: "14px",
-                      width: "100%",
-                    },
-                  }}
-                />
+                {isConnected ? (
+                  <div className="space-y-2">
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start"
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        window.location.href = '/dashboard';
+                      }}
+                    >
+                      Dashboard
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start"
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        window.location.href = '/profile';
+                      }}
+                    >
+                      Mi Perfil
+                    </Button>
+                  </div>
+                ) : (
+                  <ConnectWalletButton />
+                )}
               </div>
             </nav>
           </div>

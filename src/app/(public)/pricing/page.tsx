@@ -10,10 +10,6 @@ export default function PricingPage() {
   // TODO: Get current user's plan from session/database
   // const currentPlanId = await getCurrentUserPlan();
   
-  return (
-    <div className="min-h-screen">
-      <PricingContainer />
-    </div>
-  );
+  return <PricingContainer />;
 }
 
