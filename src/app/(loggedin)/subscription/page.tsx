@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 };
 
 // Mock data for development - TODO: Replace with actual data from database/API
-const getMockSubscription = (): UserSubscription => {
+function getMockSubscription(): UserSubscription {
   const now = new Date();
   const periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
@@ -31,7 +31,7 @@ const getMockSubscription = (): UserSubscription => {
       lastReportDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), // 5 days ago
     },
   };
-};
+}
 
 export default function SubscriptionPage() {
   // TODO: Get actual subscription from session/database
@@ -41,10 +41,6 @@ export default function SubscriptionPage() {
   
   const subscription = getMockSubscription();
 
-  return (
-    <div className="min-h-screen">
-      <SubscriptionManagementContainer subscription={subscription} />
-    </div>
-  );
+  return <SubscriptionManagementContainer subscription={subscription} />;
 }
 
