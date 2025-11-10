@@ -7,8 +7,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 function DataInputContent() {
   const searchParams = useSearchParams();
-  const source = searchParams.get('source') || '';
-  const reportRequestId = searchParams.get('id') || '';
+  const source = searchParams.get('source');
+  const reportRequestId = searchParams.get('reportRequestId');
 
   return <DataInputContainer sourceParam={source} reportRequestIdParam={reportRequestId} />;
 }

@@ -7,7 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 function ConfigureReportContent() {
   const searchParams = useSearchParams();
-  const reportRequestId = searchParams.get('id') || '';
+  const reportRequestId = searchParams.get('reportRequestId');
 
   return <ReportConfigContainer reportRequestIdParam={reportRequestId} />;
 }

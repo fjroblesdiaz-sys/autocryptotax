@@ -7,7 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 function GenerateReportContent() {
   const searchParams = useSearchParams();
-  const reportRequestId = searchParams.get('id') || '';
+  const reportRequestId = searchParams.get('reportRequestId');
 
   return <ReportGenerationImprovedContainer reportRequestIdParam={reportRequestId} />;
 }
