@@ -1,0 +1,49 @@
+/* Thirdweb Modal Scroll Fix */
+/* This CSS fixes scroll issues in the Thirdweb connect modal */
+
+/* Fix for the main modal container */
+[data-thirdweb-modal] {
+  max-height: 90vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+/* Fix for the wallet list container */
+[data-thirdweb-modal] > div {
+  overflow-y: auto !important;
+  max-height: calc(90vh - 100px) !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+
+/* Smooth scrolling */
+[data-thirdweb-modal] * {
+  scroll-behavior: smooth !important;
+}
+
+/* Fix for wallet grid/list */
+[data-thirdweb-modal] [role="list"],
+[data-thirdweb-modal] [data-wallet-list] {
+  overflow-y: auto !important;
+  max-height: 60vh !important;
+  padding-bottom: 1rem !important;
+}
+
+/* Ensure scrollbar is visible */
+[data-thirdweb-modal] ::-webkit-scrollbar {
+  width: 8px;
+}
+
+[data-thirdweb-modal] ::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+}
+
+[data-thirdweb-modal] ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+}
+
+[data-thirdweb-modal] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+

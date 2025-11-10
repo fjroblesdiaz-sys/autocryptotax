@@ -54,6 +54,12 @@ export function ConnectWalletButton() {
           fontSize: "14px",
         },
       }}
+      connectModal={{
+        size: "wide",
+        titleIcon: "",
+        showThirdwebBranding: false,
+      }}
+      showAllWallets={true}
     />
   );
 }
