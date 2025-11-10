@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/features/auth/hooks/use-auth.hook';
 
 interface UserNavProps {
   user?: {
@@ -30,6 +31,7 @@ interface UserNavProps {
 
 export function UserNav({ user }: UserNavProps) {
   const router = useRouter();
+  const { logout } = useAuth();
 
   // Mock user data if not provided
   const userData = user || {
@@ -38,10 +40,13 @@ export function UserNav({ user }: UserNavProps) {
     plan: 'Basic',
   };
 
-  const handleLogout = () => {
-    // TODO: Implement logout logic with Thirdweb
-    console.log('Logging out...');
-    router.push('/');
+  const handleLogout = async () => {
+    try {
+      await logout();
+      router.push('/');
+    } catch (error) {
+      console.error('Error logging out:', error);
+    }
   };
 
   const userInitials = userData.name

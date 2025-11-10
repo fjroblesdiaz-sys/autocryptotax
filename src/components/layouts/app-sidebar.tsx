@@ -17,6 +17,7 @@ import {
   ChevronDown,
   BarChart3,
 } from 'lucide-react';
+import { useAuth } from '@/features/auth/hooks/use-auth.hook';
 import {
   Sidebar,
   SidebarContent,
@@ -99,6 +100,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { state } = useSidebar();
+  const { logout } = useAuth();
 
   const isCollapsed = state === 'collapsed';
 
@@ -109,10 +111,13 @@ export function AppSidebar({ user }: AppSidebarProps) {
     plan: 'Basic',
   };
 
-  const handleLogout = () => {
-    // TODO: Implement logout logic
-    console.log('Logging out...');
-    router.push('/');
+  const handleLogout = async () => {
+    try {
+      await logout();
+      router.push('/');
+    } catch (error) {
+      console.error('Error logging out:', error);
+    }
   };
 
   const userInitials = userData.name
