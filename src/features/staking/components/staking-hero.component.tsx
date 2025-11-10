@@ -23,7 +23,7 @@ export const StakingHero = ({ stats }: StakingHeroProps) => {
             <h1 className="text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl">
               Gana Recompensas con Staking
             </h1>
-            <p className="text-lg text-muted-foreground sm:text-xl max-w-2xl">
+            <p className="text-lg text-muted-foreground sm:text-xl text-center">
               Stake tus tokens ACT y gana recompensas pasivas mientras apoyas el ecosistema 
               de Auto Crypto Tax. Elige el pool que mejor se adapte a tus necesidades.
             </p>
