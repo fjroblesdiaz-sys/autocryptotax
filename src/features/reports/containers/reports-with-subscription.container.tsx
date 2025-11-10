@@ -69,7 +69,7 @@ export const ReportsWithSubscriptionContainer: React.FC<ReportsWithSubscriptionC
   // Loading state
   if (subscription === undefined) {
     return (
-      <div className="container max-w-4xl mx-auto py-12 px-4">
+      <div className="container w-full mx-auto py-12 px-4">
         <Card>
           <CardContent className="p-6 space-y-4">
             <Skeleton className="h-8 w-64" />
